@@ -1,0 +1,14 @@
+{
+  "name": "whoscoffee",
+  "version": "1.0.0",
+  "description": "커피 품앗이 알리미 — 오늘 누가 살 차례인지 알려주는 사내망 로컬 웹앱",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "powershell -ExecutionPolicy Bypass -File build.ps1"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "private": true
+}

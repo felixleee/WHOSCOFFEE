@@ -1,0 +1,18 @@
+# 의존성 / 로컬 상태
+node_modules/
+.wrangler/
+*.db
+
+# 빌드 산출물 / 바이너리 (릴리스 자산으로 배포, 빌드로 재생성)
+dist/
+public/download/*.exe
+
+# 백업 / 잡동사니
+*.bak
+*_최최최종.zip
+*.lnk
+
+# 시크릿 (현재 없음 — 예방용)
+.dev.vars
+.env
+.env.*

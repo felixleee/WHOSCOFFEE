@@ -1,0 +1,16 @@
+# WHOSCOFFEE — Cloudflare Workers + D1
+name = "whoscoffee"
+main = "src/worker.js"
+compatibility_date = "2025-07-01"
+
+# D1 데이터베이스 (배포 시 `wrangler d1 create whoscoffee` 로 만든 database_id 를 넣는다)
+[[d1_databases]]
+binding = "DB"
+database_name = "whoscoffee"
+database_id = "641a6176-7b23-4fe3-8ff5-fc0a58a680f3"
+
+# 화면(index.html)·favicon 정적 서빙
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"

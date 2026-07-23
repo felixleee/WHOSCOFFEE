@@ -1,0 +1,27 @@
+# WHOSCOFFEE 공용 서버 (Fly.io)
+# 앱 이름(app)은 전역 고유해야 함 — 배포 전 원하는 이름으로 바꾸거나 `fly launch` 가 정하게 둔다.
+app = "whoscoffee"
+primary_region = "nrt"   # 도쿄 (한국에서 지연 가장 낮음)
+
+[build]
+
+[env]
+  PORT = "8080"
+  WC_DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"     # 유휴 시 정지 → 비용 최소화
+  auto_start_machines = true      # 요청 오면 자동 시작
+  min_machines_running = 0
+  processes = ["app"]
+
+[[mounts]]
+  source = "wc_data"              # 영속 볼륨 (whoscoffee.db + config.json)
+  destination = "/data"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

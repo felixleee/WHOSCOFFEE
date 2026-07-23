@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WHOSCOFFEE ☕</title>
+<link rel="icon" id="fav-ico" href="/favicon.ico" sizes="any" />
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('wc_theme')||'light');}catch(e){}</script>
+<style>
+  @font-face {
+    font-family: "Pretendard Variable";
+    font-weight: 45 920;
+    font-style: normal;
+    font-display: swap;
+    src: url("/PretendardVariable.woff2") format("woff2-variations");
+  }
+  :root {
+    --bg: #f0e6d6; --card: #fffdf7; --ink: #26201c; --muted: #8a7d6c;
+    --line: #e2d4bd; --brand: #1c1c1c; --brand-soft: #8c8377; --stamp: #1c1c1c; --logo: #1c1c1c;
+    --shadow: 0 8px 30px rgba(80, 54, 34, .12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #211a16; --card: #2c2420; --ink: #f0e7dd; --muted: #a3917f;
+    --line: #3d332c; --brand: #f0e6d6; --brand-soft: #9a8f80;
+    --stamp: #f0e6d6; --shadow: 0 8px 30px rgba(0,0,0,.35); --logo: #f0e6d6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 20px;
+    scrollbar-width: none;
+  }
+  body::-webkit-scrollbar { display: none; }
+  .wrap { width: 100%; max-width: 360px; }
+  h1 { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 8px 0 20px; color: var(--logo); }
+  h1 .word { font-size: 1.3rem; letter-spacing: 4px; font-weight: 700; }
+  h1 .logo-mark { display: block; margin-top: 5px; }
+  h1 small { font-size: .7rem; color: var(--muted); letter-spacing: 2px; font-weight: 400; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px 22px; box-shadow: var(--shadow); }
+
+  .hero { text-align: center; padding: 8px 0 4px; }
+  .hero .emoji { font-size: 2.8rem; }
+  .hero .label { color: var(--muted); font-size: .95rem; margin-top: 4px; }
+  .hero .name { font-size: 2.2rem; font-weight: 800; color: var(--brand); margin: 4px 0; }
+  .hero.wait .name { color: var(--muted); }
+  .sub { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 6px; }
+
+  button { font: inherit; cursor: pointer; }
+  .theme-toggle { position: fixed; top: 14px; right: 14px; z-index: 40; width: 38px; height: 38px;
+    border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+  .theme-toggle:hover { border-color: var(--brand-soft); }
+  .topleft { position: fixed; top: 14px; left: 14px; z-index: 40; display: flex; align-items: center; gap: 8px; }
+  .poll-stamp { color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap; }
+  .poll-toggle { display: flex; align-items: center; height: 38px; border-radius: 19px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+  .poll-toggle button { border: none; background: none; color: var(--ink); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; height: 100%; }
+  .poll-refresh { padding: 0 8px 0 11px; }
+  .poll-cycle { padding: 0 13px 0 9px; gap: 5px; position: relative; }
+  .poll-cycle::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 1px; background: var(--line); }
+  .poll-toggle button:hover { color: var(--brand-soft); }
+  .poll-refresh:active .poll-ico { transform: scale(.9); }
+  .poll-ico { display: block; }
+  @keyframes poll-spin { to { transform: rotate(360deg); } }
+  .poll-refresh.spinning .poll-ico { animation: poll-spin .7s linear infinite; }
+  .poll-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .poll-opts button { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; line-height: 1.2; }
+  .poll-opts button small { font-weight: 400; opacity: .6; font-size: .62rem; margin-top: 1px; }
+  .poll-opts button.sel { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+  .offline-bar { background: rgba(120,120,120,.12); color: var(--muted); border: 1px dashed var(--line);
+    border-radius: 10px; padding: 8px 12px; font-size: .8rem; text-align: center; margin-bottom: 12px; line-height: 1.4; }
+  .btn-wide { width: 100%; border-radius: 12px; padding: 14px; font-weight: 700; border: none; }
+  .btn-primary { background: var(--brand); color: var(--bg); }
+  .btn-big { width: 100%; border: 2px solid var(--brand-soft); background: transparent; color: var(--brand);
+    border-radius: 14px; padding: 20px; font-weight: 800; font-size: 1.1rem; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .btn-big:hover { background: rgba(120,120,120,.08); }
+  .btn-big .tag { font-size: .76rem; font-weight: 600; color: var(--muted); }
+  .btn-back { background: none; border: none; color: var(--muted); font-size: .85rem; cursor: pointer; text-decoration: underline; }
+  input[type=text], input[type=tel] {
+    font: inherit; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); width: 100%;
+  }
+  input.pin { text-align: center; letter-spacing: 10px; font-size: 1.4rem; }
+  .field { margin: 12px 0; }
+  .field label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 6px; }
+
+  .pinbox { text-align: center; margin: 18px 0; padding: 18px; border: 2px dashed var(--brand-soft); border-radius: 16px; background: rgba(120,120,120,.05); }
+  .pinbox .code { font-size: 2.8rem; font-weight: 900; letter-spacing: 10px; color: var(--brand); font-variant-numeric: tabular-nums; }
+  .pinbox .cap { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+  .dots::after { content: ''; animation: dots 1.4s steps(4,end) infinite; }
+  @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+  .stamp-btn { width: 100%; margin-top: 22px; font: inherit; cursor: pointer; border: 2.5px dashed var(--brand-soft);
+    border-radius: 16px; background: transparent; color: var(--brand); font-weight: 800; font-size: 1.05rem; padding: 20px 16px;
+    transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .stamp-btn:hover { background: rgba(120,120,120,.08); border-color: var(--stamp); color: var(--stamp); }
+  .stamp-btn:active { transform: scale(.98); }
+  .stamp-btn .big { font-size: 1.15rem; }
+  .stamp-btn .hint { font-size: .78rem; font-weight: 600; color: var(--muted); }
+  .waitbox { margin-top: 20px; text-align: center; padding: 18px; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted); font-size: .9rem; }
+
+  .versus { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .pchip { flex: 1; display: flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 12px; min-width: 0; }
+  .pchip.cur { background: var(--bg); border: 1px solid var(--line); }
+  .pchip.dim { opacity: .5; }
+  .pav { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+  .pav.me { background: var(--brand); color: var(--bg); }
+  .pav.you { background: var(--brand-soft); color: var(--card); }
+  .pchip .pn { font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .parrow { color: var(--brand-soft); font-size: 16px; flex-shrink: 0; }
+  .bubble { text-align: center; padding: 4px 0; }
+  .speech { display: inline-block; background: var(--brand); color: var(--bg); font-size: 1.02rem; font-weight: 800; padding: 11px 18px;
+    border-radius: 18px; position: relative; margin-bottom: 14px; word-break: keep-all; line-height: 1.4; max-width: 250px; }
+  .speech::after { content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); border: 7px solid transparent; border-top-color: var(--brand); border-bottom: 0; }
+  .speech.dim { background: var(--line); color: var(--ink); }
+  .speech.dim::after { border-top-color: var(--line); }
+  .cup { display: block; margin: 2px auto 0; }
+  .battle-btn { width: 100%; margin-top: 16px; border: none; border-radius: 16px; background: var(--brand); color: var(--bg); font-weight: 800; font-size: 1.1rem; padding: 16px; cursor: pointer; transition: transform .1s; }
+  .battle-btn:active { transform: scale(.97); }
+
+  .versus3 { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; }
+  .vcol { text-align: center; min-width: 0; }
+  .ava { border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 9px; position: relative; background: var(--brand); color: var(--bg); }
+  .vcol.cur .ava { width: 60px; height: 60px; box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--brand); }
+  .vcol.dim .ava { width: 44px; height: 44px; background: var(--brand-soft); }
+  .ava-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .ava-ini { font-weight: 800; font-size: 1.1rem; }
+  .vcol.dim .ava-ini { font-size: .95rem; }
+  .ava.editable { cursor: pointer; }
+  .ava-cam { position: absolute; right: -5px; bottom: -5px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px var(--card); transition: transform .1s; }
+  .ava.editable:active .ava-cam { transform: scale(.9); }
+  .ava-cam svg { display: block; width: 11px; height: 11px; }
+  .vnm { font-size: 13px; font-weight: 700; color: var(--ink); max-width: 96px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 auto; }
+  .vcol.dim .vnm { color: var(--muted); font-weight: 600; }
+  .vnm.editable { cursor: pointer; }
+  .vnm .pen { font-size: 10px; color: var(--muted); }
+  .vst { font-size: 10px; margin-top: 2px; }
+  .vcol.cur .vst { color: var(--ink); font-weight: 800; }
+  .vcol.dim .vst { color: var(--muted); }
+  .vs { font-size: 12px; font-weight: 800; color: var(--brand-soft); letter-spacing: 1px; }
+  .foot-switch { margin-top: auto; padding: 18px 0 4px; text-align: center; }
+  .foot-switch button { background: none; border: none; color: var(--muted); font-size: .82rem; cursor: pointer; text-decoration: underline; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: .85rem; }
+  .topbar .me { color: var(--muted); } .topbar .me b { color: var(--brand); }
+  .topbar .switch { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 20px; padding: 4px 12px; font-size: .78rem; cursor: pointer; }
+
+  .recent { margin-top: 26px; }
+  .recent h2 { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
+  .rec-list { overflow-y: auto; max-height: 117px; }   /* 최대 3개만 보이고 나머진 스크롤 (타이틀은 고정) */
+  .rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px dashed var(--line); font-size: .92rem; }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-date { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; }
+  .rec-name { font-weight: 700; }
+  .rec-badge { margin-left: auto; font-size: .7rem; font-weight: 800; color: var(--stamp); border: 1.5px solid var(--stamp); border-radius: 6px; padding: 1px 7px; transform: rotate(-6deg); opacity: .85; letter-spacing: 1px; }
+  .rec-note { color: var(--muted); font-size: .8rem; }
+  .undo-row, .minor-row { text-align: center; margin-top: 14px; }
+  .undo-row button, .minor-row button { background: none; border: none; color: var(--muted); font-size: .82rem; cursor: pointer; text-decoration: underline; }
+  .minor-row .row-sep { color: var(--muted); opacity: .5; margin: 0 8px; text-decoration: none; }
+  /* 마지막 기록 취소 요청/승인 배너 */
+  .undo-banner { margin-top: 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--brand-soft); background: var(--card); color: var(--ink); font-size: .84rem; font-weight: 700; text-align: center; line-height: 1.5; }
+  .undo-banner.wait { border-style: dashed; color: var(--muted); font-weight: 600; }
+  .undo-acts { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .undo-acts button { border: none; border-radius: 9px; padding: 7px 18px; font-weight: 800; font-size: .82rem; cursor: pointer; background: var(--brand); color: var(--bg); }
+  .undo-acts button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; }
+  /* 전체화면: 창 자체는 스크롤 방지. 기록은 rec-list 가 최대 3개만 보이고 내부 스크롤(타이틀 고정) */
+  /* 창 높이(viewer.cs normalSize)를 콘텐츠에 맞게 키워 여유롭게 3개가 들어가도록 함 — 섹션 간격은 원래대로 유지 */
+  body:not(.mini-mode) { overflow: hidden; }
+  /* 미니 모드 (현재 창을 컴팩트 위젯으로) */
+  .mini { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 280px; margin: 0 auto; box-shadow: var(--shadow); }
+  .mbrand { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 2px; font-weight: 700; color: var(--muted); }
+  .mvs { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .mcol { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .mav { border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; font-weight: 800; background: var(--brand); color: var(--bg); }
+  .mcol.cur .mav { width: 58px; height: 58px; font-size: 1.05rem; box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--brand); }
+  .mcol.dim .mav { width: 44px; height: 44px; font-size: .95rem; background: var(--brand-soft); }
+  .mav img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .mnm { font-size: 12px; font-weight: 700; color: var(--ink); max-width: 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcol.dim .mnm { color: var(--muted); font-weight: 600; }
+  .mst { font-size: 10px; }
+  .mcol.cur .mst { color: var(--ink); font-weight: 800; }
+  .mcol.dim .mst { color: var(--muted); }
+  .mswap { color: var(--brand-soft); font-size: 15px; }
+  .mbuy { background: var(--brand); color: var(--bg); border: none; border-radius: 12px; padding: 9px 18px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; }
+  .mbuy:disabled { opacity: .55; cursor: default; }
+  .mundo { margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.5; }
+  .mundo.wait { color: var(--muted); font-weight: 600; }
+  .mundo b { color: var(--brand-soft); }
+  .mundo-acts { display: flex; gap: 6px; justify-content: center; margin-top: 5px; }
+  .mundo button { border: none; border-radius: 7px; padding: 4px 12px; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; background: var(--brand); color: var(--bg); }
+  .mundo button.ghost, .mundo.wait button { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; padding: 3px 10px; }
+  .mwait { font-size: 12.5px; color: var(--muted); }
+  body.mini-mode { justify-content: flex-start; padding-top: 30px; padding-bottom: 12px; }
+  body.mini-mode #footSwitch { display: none !important; }
+  body.mini-mode .wrap { max-width: 240px; }
+  body.mini-mode #app { background: none; border: none; box-shadow: none; padding: 0; }
+  /* 로고+워드마크: 카드 밖 상단, 한 줄(inline)로 (소제목 숨김) */
+  body.mini-mode h1 { flex-direction: row; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 12px; }
+  body.mini-mode h1 .logo-mark { width: 28px; height: 28px; margin-top: 0; }
+  body.mini-mode h1 .word { font-size: 1rem; letter-spacing: 2px; }
+  body.mini-mode h1 small { display: none; }
+  /* 우상단 테마 토글: 축소 + 배경 제거 */
+  body.mini-mode .theme-toggle { width: 22px; height: 22px; background: none; border: none; box-shadow: none; font-size: .95rem; top: 8px; right: 8px; }
+  /* 항상-위 핀 토글: 앱(WebView2)+미니 모드에서만 노출, 우상단 테마 왼쪽 */
+  .pin-toggle { position: fixed; top: 8px; right: 34px; z-index: 40; width: 22px; height: 22px; display: none; align-items: center; justify-content: center; padding: 0; border: none; background: none; color: var(--muted); cursor: pointer; }
+  html.is-app body.mini-mode .pin-toggle { display: flex; }
+  .pin-toggle.on { color: var(--brand); }
+  .pin-toggle.on svg { fill: var(--brand); }
+  .pin-toggle svg { transform: rotate(-45deg); margin-bottom: 1px; } /* 핀 기울임 + 미세 정렬 */
+  /* 업데이트 알림 배지 (하단 중앙, 앱+구버전일 때만) */
+  .upd-bar { display: none; position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 65; align-items: center; gap: 6px; background: var(--brand); color: var(--bg); padding: 8px 16px; border-radius: 30px; font-size: .82rem; font-weight: 700; text-decoration: none; box-shadow: var(--shadow); white-space: nowrap; }
+  .upd-bar.show { display: inline-flex; }
+  body.mini-mode .upd-bar { display: none !important; }
+  /* 좌상단: 새로고침 버튼 + 마지막 갱신 시각만 (작게·배경 없음, 주기설정 버튼 숨김) */
+  body.mini-mode .topleft { top: 8px; left: 8px; gap: 4px; }
+  body.mini-mode .poll-toggle { height: auto; border: none; background: none; box-shadow: none; border-radius: 0; }
+  body.mini-mode .poll-cycle { display: none; }
+  body.mini-mode .poll-refresh { padding: 2px; }
+  body.mini-mode .poll-stamp { font-size: .6rem; }
+
+  .stamp-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 50; pointer-events: none; background: rgba(255,255,255,0); transition: background .25s ease; }
+  .stamp-overlay.show { display: flex; background: rgba(255,255,255,.82); }
+  .stamp-overlay.fade { background: rgba(255,255,255,0); }
+  .stamp-mark { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .stamp-seal { display: block; }
+  .stamp-word { margin-top: 12px; font-size: 1.15rem; font-weight: 900; color: #a01e2d; letter-spacing: .5px; opacity: 0; word-break: keep-all; text-align: center; }
+  .stamp-animate .stamp-seal { animation: slam .5s cubic-bezier(.2,1.5,.35,1) forwards; }
+  .stamp-animate .stamp-word { animation: wordin .35s ease-out .16s forwards; }
+  @keyframes slam { 0%{transform:rotate(-11deg) scale(2.8);opacity:0} 45%{transform:rotate(-11deg) scale(.84);opacity:1} 63%{transform:rotate(-11deg) scale(1.08)} 80%{transform:rotate(-11deg) scale(.97)} 100%{transform:rotate(-11deg) scale(1);opacity:1} }
+  @keyframes wordin { 0%{opacity:0;transform:translateY(8px) scale(.8)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+  .stamp-p { position: absolute; top: 46%; left: 50%; font-size: 17px; line-height: 1; opacity: 0; }
+  .stamp-animate .stamp-p { animation: spk .85s ease-out .08s forwards; }
+  @keyframes spk { 0%{transform:translate(-50%,-50%) scale(.2);opacity:0} 28%{opacity:1} 55%{transform:var(--to) scale(1.15);opacity:1} 100%{transform:var(--to) scale(1);opacity:0} }
+  .stamp-overlay.fade .stamp-mark { transition: opacity .3s; opacity: 0; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg);
+    padding: 12px 20px; border-radius: 30px; font-size: .9rem; opacity: 0; transition: all .25s; pointer-events: none; z-index: 60; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .modal { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.4); padding: 20px; }
+  .modal.show { display: flex; }
+  .modal-card { background: var(--card); border-radius: 16px; padding: 20px; width: 100%; max-width: 300px; box-shadow: var(--shadow); }
+  .modal-t { font-size: 1rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; text-align: center; }
+  .modal-card input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; text-align: center; }
+  .modal-row { display: flex; gap: 8px; margin-top: 14px; }
+  .m-btn { flex: 1; padding: 11px; border-radius: 10px; font-weight: 700; font: inherit; cursor: pointer; border: none; }
+  .m-cancel { background: var(--line); color: var(--ink); }
+  .m-ok { background: var(--brand); color: var(--bg); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" aria-label="다크/라이트 테마 전환"></button>
+<button class="pin-toggle" id="pinToggle" aria-label="항상 위 고정" title="항상 위 고정">
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6z"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
+</button>
+<a class="upd-bar" id="updBar" rel="noopener">☕ 새 버전이 있어요 · 받기</a>
+<div class="topleft">
+  <div class="poll-toggle">
+    <button class="poll-refresh" id="pollRefresh" aria-label="지금 새로고침" title="지금 새로고침">
+      <svg class="poll-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+    <button class="poll-cycle" id="pollCycle" aria-label="자동 새로고침 주기 설정" title="자동 새로고침 주기">
+      <span class="tx">하루</span>
+    </button>
+  </div>
+  <span class="poll-stamp" id="pollStamp"></span>
+</div>
+<div class="wrap">
+  <h1>
+    <svg class="logo-mark" viewBox="0 0 128 128" width="46" height="46" aria-hidden="true">
+      <g transform="rotate(-28 50 48)"><ellipse cx="50" cy="48" rx="14" ry="19" fill="currentColor"/><path d="M50 32 C46 41 54 55 50 64" fill="none" stroke="var(--bg)" stroke-width="3.5" stroke-linecap="round"/></g>
+      <g transform="rotate(-28 78 80)"><ellipse cx="78" cy="80" rx="14" ry="19" fill="currentColor"/><path d="M78 64 C74 73 82 87 78 96" fill="none" stroke="var(--bg)" stroke-width="3.5" stroke-linecap="round"/></g>
+    </svg>
+    <span class="word">WHOSCOFFEE</span>
+    <small>오늘 커피는 누가?</small>
+  </h1>
+  <div id="app" class="card">불러오는 중…</div>
+</div>
+<div class="foot-switch" id="footSwitch"></div>
+
+<div id="stampOverlay" class="stamp-overlay">
+  <div class="stamp-mark" id="stampMark">
+    <span class="stamp-p" style="--to:translate(calc(-50% + 72px),calc(-50% - 48px));color:#c8892b">✦</span>
+    <span class="stamp-p" style="--to:translate(calc(-50% - 74px),calc(-50% - 34px));color:#006241">✦</span>
+    <span class="stamp-p" style="--to:translate(calc(-50% + 64px),calc(-50% + 52px));color:#a01e2d">✳</span>
+    <span class="stamp-p" style="--to:translate(calc(-50% - 66px),calc(-50% + 50px));color:#c8892b">✦</span>
+    <span class="stamp-p" style="--to:translate(calc(-50% + 4px),calc(-50% - 76px));color:#006241">✳</span>
+    <span class="stamp-p" style="--to:translate(calc(-50% + 88px),calc(-50% + 6px));color:#a01e2d">·</span>
+    <span class="stamp-p" style="--to:translate(calc(-50% - 90px),calc(-50% + 10px));color:#c8892b">·</span>
+    <svg class="stamp-seal" width="148" height="148" viewBox="0 0 120 120" aria-hidden="true">
+      <defs>
+        <linearGradient id="mA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a9f68"/><stop offset="38%" stop-color="#4f6a33"/><stop offset="66%" stop-color="#7a4b2e"/><stop offset="100%" stop-color="#a01e2d"/></linearGradient>
+        <linearGradient id="mB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12b47a"/><stop offset="42%" stop-color="#6f4e37"/><stop offset="100%" stop-color="#8b1e2d"/></linearGradient>
+        <path id="sTop" d="M28 60 A32 32 0 0 1 92 60" fill="none"/><path id="sBot" d="M30 60 A30 30 0 0 0 90 60" fill="none"/>
+      </defs>
+      <circle cx="60" cy="60" r="55" fill="none" stroke="#6f4e37" stroke-width="2"/>
+      <circle cx="60" cy="60" r="49" fill="none" stroke="#6f4e37" stroke-width="5"/>
+      <text font-family="Pretendard Variable, system-ui" font-size="9.5" font-weight="700" fill="#6f4e37" letter-spacing="1.6"><textPath href="#sTop" startOffset="50%" text-anchor="middle">WHOSCOFFEE</textPath></text>
+      <text font-family="Pretendard Variable, system-ui" font-size="8" font-weight="700" fill="#a01e2d" letter-spacing="1.2"><textPath href="#sBot" startOffset="50%" text-anchor="middle">품앗이 완료</textPath></text>
+      <g transform="rotate(-30 53 52)"><ellipse cx="53" cy="52" rx="8" ry="11" fill="url(#mA)"/><path d="M53 42 C51 46 55 58 53 62" fill="none" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/></g>
+      <g transform="rotate(-30 67 64)"><ellipse cx="67" cy="64" rx="8" ry="11" fill="url(#mB)"/><path d="M67 54 C65 58 69 70 67 74" fill="none" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/></g>
+    </svg>
+    <div class="stamp-word">품앗이 완료</div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<div id="pollModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-t">새로고침 주기</div>
+    <div class="poll-opts">
+      <button data-pk="5s">5초</button>
+      <button data-pk="1m">1분</button>
+      <button data-pk="30m">30분</button>
+      <button data-pk="1h">1시간</button>
+      <button data-pk="12h">12시간</button>
+      <button data-pk="1d">하루<small>(낮 12시)</small></button>
+    </div>
+    <div class="modal-row"><button class="m-btn m-cancel" id="pollCancel">닫기</button></div>
+  </div>
+</div>
+<div id="renameModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-t">이름 바꾸기</div>
+    <input type="text" id="renameInput" maxlength="20" placeholder="새 이름" />
+    <div class="modal-row">
+      <button class="m-btn m-cancel" id="renameCancel">취소</button>
+      <button class="m-btn m-ok" id="renameOk">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+const BEAN = `<svg width="46" height="46" viewBox="0 0 100 100" style="margin:0 auto 6px;display:block" aria-hidden="true"><g transform="rotate(-30 40 38)"><ellipse cx="40" cy="38" rx="11" ry="15" fill="var(--brand)"/><path d="M40 25 C36 31 44 45 40 51" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></g><g transform="rotate(-30 60 62)"><ellipse cx="60" cy="62" rx="11" ry="15" fill="var(--brand)"/><path d="M60 49 C56 55 64 69 60 75" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></g></svg>`;
+
+// 테마 토글 (시스템 무시, 수동 선택 + localStorage 유지)
+const THEME_KEY = 'wc_theme';
+const themeBtn = $('#themeToggle');
+const curTheme = () => document.documentElement.getAttribute('data-theme') || 'light';
+const setThemeIcon = () => { themeBtn.textContent = curTheme() === 'dark' ? '☀' : '☾'; };
+themeBtn.onclick = () => {
+  const next = curTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) { }
+  setThemeIcon();
+};
+setThemeIcon();
+const TOKEN_KEY = 'wc_token';
+const STATE_KEY = 'wc_last_state';
+const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
+const setToken = (t) => t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
+
+let pollTimer = null;
+let busy = false; // 도장 애니메이션·요청 중이면 폴링 skip
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+function fmtDate(iso) { const [, m, d] = iso.split('-'); return `${+m}/${+d}`; }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); }
+async function api(path, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), 'X-Token': getToken() };
+  let res;
+  try { res = await fetch(path, opts); }
+  catch (_) { const err = new Error('서버에 연결할 수 없어요'); err.offline = true; throw err; }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || '오류가 발생했어요');
+  return data;
+}
+const jsonPost = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+
+const POLL_KEY = 'wc_poll';
+const POLL_OPTS = [
+  { key: '5s', label: '5초', ms: 5000 },
+  { key: '1m', label: '1분', ms: 60000 },
+  { key: '30m', label: '30분', ms: 1800000 },
+  { key: '1h', label: '1시간', ms: 3600000 },
+  { key: '12h', label: '12시간', ms: 43200000 },
+  { key: '1d', label: '하루', daily: true },
+];
+const getPollKey = () => { try { return localStorage.getItem(POLL_KEY) || '1d'; } catch (e) { return '1d'; } };
+const curPollOpt = () => POLL_OPTS.find(o => o.key === getPollKey()) || POLL_OPTS[5];
+let pollOn = false;
+function scheduleDaily() {
+  const now = new Date();
+  const next = new Date(now); next.setHours(12, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  pollTimer = setTimeout(() => { doRefresh(true); if (pollOn) scheduleDaily(); }, next - now);
+}
+function setPoll(on) {
+  pollOn = on;
+  if (pollTimer) { clearTimeout(pollTimer); clearInterval(pollTimer); pollTimer = null; }
+  if (!on) return;
+  const o = curPollOpt();
+  if (o.daily) scheduleDaily();
+  else pollTimer = setInterval(() => doRefresh(true), o.ms);
+}
+const pollRefresh = $('#pollRefresh');
+const pollCycle = $('#pollCycle');
+const updatePollLabel = () => { const tx = pollCycle && pollCycle.querySelector('.tx'); if (tx) tx.textContent = curPollOpt().label; };
+
+// 새로고침 아이콘: 즉시 새로고침 + 회전 효과(최소 회전시간 보장)
+let refreshing = false;
+async function doRefresh(isPoll) {
+  if (refreshing || busy) return;
+  refreshing = true;
+  if (pollRefresh) pollRefresh.classList.add('spinning');
+  const started = Date.now();
+  try { await load(isPoll); }
+  finally {
+    const wait = Math.max(0, 650 - (Date.now() - started));
+    setTimeout(() => { if (pollRefresh) pollRefresh.classList.remove('spinning'); refreshing = false; }, wait);
+  }
+}
+if (pollRefresh) pollRefresh.onclick = () => doRefresh(false);
+
+// 시간 라벨: 자동 새로고침 주기 모달
+if (pollCycle) pollCycle.onclick = () => {
+  const m = $('#pollModal');
+  m.querySelectorAll('[data-pk]').forEach(b => b.classList.toggle('sel', b.dataset.pk === getPollKey()));
+  m.classList.add('show');
+};
+$('#pollModal').querySelectorAll('[data-pk]').forEach(b => b.onclick = () => {
+  try { localStorage.setItem(POLL_KEY, b.dataset.pk); } catch (e) { }
+  updatePollLabel();
+  $('#pollModal').classList.remove('show');
+  setPoll(pollOn);
+});
+$('#pollCancel').onclick = () => $('#pollModal').classList.remove('show');
+updatePollLabel();
+
+// 좌상단 갱신 UI(폴링 알약+갱신시각)는 방에 입장한 상태에서만 표시
+const topleft = document.querySelector('.topleft');
+const showTop = on => { if (topleft) topleft.style.display = on ? 'flex' : 'none'; };
+showTop(false); // 첫 상태 로드 전까진 숨김(방 입장 확인되면 노출)
+
+// 마지막으로 데이터를 성공적으로 불러온 시각 (상대시간 표시)
+const pollStamp = $('#pollStamp');
+const FETCH_KEY = 'wc_last_fetch';
+let lastFetch = (() => { try { return +localStorage.getItem(FETCH_KEY) || 0; } catch (e) { return 0; } })();
+function relTime(ts) {
+  if (!ts) return '';
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 10) return '방금 갱신';
+  if (sec < 60) return sec + '초 전 갱신';
+  const m = Math.floor(sec / 60); if (m < 60) return m + '분 전 갱신';
+  const h = Math.floor(m / 60); if (h < 24) return h + '시간 전 갱신';
+  const d = new Date(ts), hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+  return (h < 48 ? '어제 ' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + hh + ':' + mm + ' 갱신';
+}
+const updateStamp = () => { if (pollStamp) pollStamp.textContent = relTime(lastFetch); };
+const markFetched = () => { lastFetch = Date.now(); try { localStorage.setItem(FETCH_KEY, lastFetch); } catch (e) { } updateStamp(); };
+updateStamp();
+setInterval(updateStamp, 30000);
+
+function playStamp(name, done) {
+  const ov = $('#stampOverlay'), mark = $('#stampMark');
+  ov.classList.remove('fade'); ov.classList.add('show');
+  mark.classList.remove('stamp-animate'); void mark.offsetWidth; mark.classList.add('stamp-animate');
+  setTimeout(() => { ov.classList.add('fade'); setTimeout(() => { ov.classList.remove('show', 'fade'); done && done(); }, 340); }, 1250);
+}
+
+function setFoot(html) { const f = document.getElementById('footSwitch'); const v = html || ''; if (f && f.innerHTML !== v) f.innerHTML = v; }
+
+function renameMe(cur) {
+  const modal = $('#renameModal'), input = $('#renameInput');
+  input.value = cur || '';
+  modal.classList.add('show');
+  setTimeout(() => { input.focus(); input.select(); }, 40);
+  const close = () => { modal.classList.remove('show'); };
+  const ok = async () => {
+    const t = input.value.trim();
+    if (!t || t === cur) { close(); return; }
+    close();
+    try { await jsonPost('/api/rename', { name: t }); load(); } catch (e) { toast(e.message); }
+  };
+  $('#renameOk').onclick = ok;
+  $('#renameCancel').onclick = close;
+  input.onkeydown = e => { if (e.key === 'Enter') ok(); else if (e.key === 'Escape') close(); };
+}
+
+function pickAvatar() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 96;
+      const ctx = c.getContext('2d');
+      const sz = Math.min(img.naturalWidth, img.naturalHeight);
+      ctx.drawImage(img, (img.naturalWidth - sz) / 2, (img.naturalHeight - sz) / 2, sz, sz, 0, 0, 96, 96);
+      const data = c.toDataURL('image/jpeg', 0.72);
+      jsonPost('/api/avatar', { avatar: data }).then(load).catch(e => toast(e.message));
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => toast('이미지를 읽지 못했어요');
+    img.src = URL.createObjectURL(f);
+  };
+  inp.click();
+}
+
+// ---------------- 라우팅 ----------------
+async function load(isPoll) {
+  let s;
+  try { s = await api('/api/state'); }
+  catch (e) {
+    // 서버가 꺼져 연결 실패 → 마지막으로 본 상태(읽기 전용) 표시, 폴링은 계속(켜지면 자동 복구)
+    if (e.offline) {
+      const cached = localStorage.getItem(STATE_KEY);
+      if (cached) { try { const cs = JSON.parse(cached); notifyNativeMini(miniMode); notifyNativePin(miniMode && pinOn); if (miniMode) { renderMiniMode(cs, true); showTop(true); } else { document.body.classList.remove('mini-mode'); renderMain(cs, true); showTop(true); } setPoll(true); return; } catch (_) { } }
+    }
+    if (!isPoll) toast(e.message);
+    return;
+  }
+  markFetched(); // 성공적으로 데이터를 받아온 시각 기록
+  lastState = s;
+  // 온라인 정상: active 상태를 캐시에 저장(오프라인 시 보여줄 마지막 상태)
+  if (s.phase === 'active') { try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (_) { } }
+  const inRoom = s.phase === 'waiting' || s.phase === 'active';
+  notifyNativeMini(miniMode && inRoom); // 앱 창 크기 축소/복원
+  notifyNativePin(miniMode && inRoom && pinOn); // 항상-위: 미니일 때만, 전체화면이면 off
+  // 미니 모드 + 방 입장 상태면 컴팩트 위젯으로, 아니면 일반 화면
+  if (miniMode && inRoom) {
+    showTop(true); // 좌상단 새로고침+갱신시각 (미니에선 컴팩트하게)
+    renderMiniMode(s);
+    setPoll(true);
+  } else {
+    document.body.classList.remove('mini-mode');
+    showTop(inRoom); // 좌상단 갱신 UI는 방 입장(waiting/active) 때만
+    if (s.phase === 'waiting') { renderWaiting(s); setPoll(true); }
+    else if (s.phase === 'active') { renderMain(s); setPoll(true); }
+    else { renderSetupHome(s); setPoll(false); }
+  }
+}
+
+// 1) 첫 화면: 만들기 / 참여
+function renderSetupHome(s) {
+  app.innerHTML = `
+    <div class="hero">${BEAN}<div class="name" style="font-size:1.4rem">오늘도 커피 품앗이</div>
+      <div class="label">새 품앗이를 열거나 받은 PIN으로 참여하세요</div></div>
+    <div style="margin-top:20px">
+      <button class="btn-big" id="btnCreate">☕ 품앗이 만들기<span class="tag">내가 방장 · PIN 발급</span></button>
+      <button class="btn-big" id="btnJoin">🔑 품앗이 참여<span class="tag">받은 PIN으로 입장</span></button>
+    </div>`;
+  $('#btnCreate').onclick = renderCreate;
+  $('#btnJoin').onclick = renderJoin;
+  setFoot('');
+}
+
+// 1-a) 방 만들기
+function renderCreate() {
+  app.innerHTML = `
+    <div class="hero">${BEAN}<div class="name" style="font-size:1.3rem">품앗이 만들기</div>
+      <div class="label">이름을 정하면 PIN이 발급돼요</div></div>
+    <div class="field"><label>내 이름</label><input type="text" id="name" placeholder="예: 홍길동" /></div>
+    <button class="btn-primary btn-wide" id="go">☕ 품앗이 만들기</button>
+    <div style="text-align:center;margin-top:10px"><button class="btn-back" id="back">← 뒤로</button></div>`;
+  $('#name').focus();
+  $('#back').onclick = () => load();
+  const submit = async () => {
+    try { const r = await jsonPost('/api/create', { name: $('#name').value }); setToken(r.token); load(); }
+    catch (e) { toast(e.message); }
+  };
+  $('#go').onclick = submit;
+  $('#name').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  setFoot('');
+}
+
+// 1-b) 방 참여
+function renderJoin() {
+  app.innerHTML = `
+    <div class="hero">${BEAN}<div class="name" style="font-size:1.3rem">품앗이 참여</div>
+      <div class="label">이름과 받은 PIN을 입력하세요</div></div>
+    <div class="field"><label>내 이름</label><input type="text" id="name" placeholder="예: 김영희" /></div>
+    <div class="field"><label>PIN (방 코드)</label><input class="pin" type="tel" inputmode="numeric" maxlength="4" id="pin" placeholder="••••" /></div>
+    <button class="btn-primary btn-wide" id="go">🔑 참여하기</button>
+    <div style="text-align:center;margin-top:10px"><button class="btn-back" id="back">← 뒤로</button></div>`;
+  $('#name').focus();
+  $('#back').onclick = () => load();
+  const submit = async () => {
+    try { const r = await jsonPost('/api/join', { name: $('#name').value, pin: $('#pin').value }); setToken(r.token); load(); }
+    catch (e) { toast(e.message); }
+  };
+  $('#go').onclick = submit;
+  $('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  setFoot('');
+}
+
+// 2) 대기 화면 (방장이 상대 참여 대기)
+function renderWaiting(s) {
+  app.innerHTML = `
+    <div class="hero wait">${BEAN}<div class="label">방을 열었어요, ${esc(s.me.name)}님</div>
+      <div class="name" style="font-size:1.2rem">상대를 기다리는 중<span class="dots"></span></div></div>
+    <div class="pinbox">
+      <div class="cap">이 PIN을 상대에게 알려주세요</div>
+      <div class="code">${esc(s.pin)}</div>
+    </div>
+    <p class="sub">상대가 이 PIN으로 참여하면 자동으로 시작돼요</p>
+    <div class="minor-row"><button id="reset">방 취소하고 다시 만들기</button></div>`;
+  $('#reset').onclick = async () => {
+    if (!confirm('방을 취소하고 처음부터 다시 만들까요? (기록도 초기화됩니다)')) return;
+    try { await jsonPost('/api/reset', {}); setToken(''); load(); } catch (e) { toast(e.message); }
+  };
+  setFoot('');
+}
+
+// 3) 품앗이 메인 (내 관점)
+function renderMain(s, offline) {
+  const myTurn = s.myTurn, me = s.me, mate = s.mate;
+  const eul = n => { if (!n) return '를'; const c = n.charCodeAt(n.length - 1); if (c < 0xAC00 || c > 0xD7A3) return '를'; return (c - 0xAC00) % 28 ? '을' : '를'; };
+  const ini = n => ((n || '?').trim().charAt(0) || '?');
+  const ava = mb => (mb && mb.avatar) ? `<img class="ava-img" src="${mb.avatar}" alt="" />` : `<span class="ava-ini">${esc(ini(mb ? mb.name : '?'))}</span>`;
+  const battleSub = s.last ? `최근 · ${esc(s.last.name)}님이 샀어요 (${fmtDate(s.last.date)})` : '오늘도 커피 품앗이 ☕';
+  const cup = `<svg class="cup" width="72" height="66" viewBox="0 0 100 96" aria-hidden="true"><path d="M38 20 C33 13 43 9 38 2" fill="none" stroke="var(--brand-soft)" stroke-width="3.5" stroke-linecap="round"/><path d="M54 20 C49 13 59 9 54 2" fill="none" stroke="var(--brand-soft)" stroke-width="3.5" stroke-linecap="round"/><path d="M22 34 H74 V62 A20 20 0 0 1 54 82 H42 A20 20 0 0 1 22 62 Z" fill="var(--brand)"/><path d="M74 42 H84 A12 12 0 0 1 84 68 H74" fill="none" stroke="var(--brand)" stroke-width="6"/><circle cx="40" cy="56" r="3.5" fill="var(--card)"/><circle cx="56" cy="56" r="3.5" fill="var(--card)"/><path d="M43 66 Q48 70 53 66" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+
+  const meCol = `<div class="vcol ${myTurn ? 'cur' : 'dim'}">
+      <div class="ava ${offline ? '' : 'editable'}" ${offline ? '' : 'id="avaMe"'}>${ava(me)}${offline ? '' : '<span class="ava-cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg></span>'}</div>
+      <div class="vnm ${offline ? '' : 'editable'}" ${offline ? '' : 'id="nameMe"'}>${esc(me.name)}${offline ? '' : ' <span class="pen">✎</span>'}</div>
+      <div class="vst">${myTurn ? '지금 차례' : '대기중'}</div>
+    </div>`;
+  const mateCol = `<div class="vcol ${myTurn ? 'dim' : 'cur'}">
+      <div class="ava">${ava(mate)}</div>
+      <div class="vnm">${esc(mate.name)}</div>
+      <div class="vst">${myTurn ? '대기중' : '지금 차례'}</div>
+    </div>`;
+  const versus = `<div class="versus3">${meCol}<div class="vs" title="번갈아 사는 품앗이">⇄</div>${mateCol}</div>`;
+
+  let center;
+  if (myTurn) {
+    center = `<div class="bubble">
+        <div class="speech">돌고 돌아 내 차례</div>
+        ${cup}
+        <p class="sub">${battleSub}</p>
+      </div>
+      ${offline
+        ? `<div class="waitbox">⚠ 서버가 꺼져 있어 지금은 도장을 찍을 수 없어요.<br>서버가 켜지면 찍을 수 있어요.</div>`
+        : `<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
+  } else {
+    center = `<div class="bubble">
+        ${cup}
+        <div class="speech dim">이번엔 ${esc(mate.name)}님 차례</div>
+        <p class="sub">${battleSub}</p>
+      </div>`;
+  }
+
+  let recent = '';
+  if (s.recent && s.recent.length) {
+    recent = `<div class="recent"><h2>품앗이 기록</h2><div class="rec-list">` + s.recent.map(e => `
+      <div class="rec-item"><span class="rec-date">${fmtDate(e.date)}</span>
+        <span class="rec-name">${esc(e.name)}${e.isMe ? ' (나)' : ''}</span>
+        ${e.note ? `<span class="rec-note">${esc(e.note)}</span>` : ''}<span class="rec-badge">완료</span></div>`).join('') + `</div></div>`;
+  }
+
+  // 마지막 기록 취소: 요청 → 상대 승인 방식
+  let undoBanner = '';
+  if (!offline && s.undoReq) {
+    undoBanner = s.undoReq.byMe
+      ? `<div class="undo-banner wait">⏳ 마지막 기록 취소를 요청했어요. 상대 승인을 기다리는 중…
+           <div class="undo-acts"><button id="undoCancel" class="ghost">요청 철회</button></div></div>`
+      : `<div class="undo-banner">🔁 <b>${esc(s.undoReq.byName)}</b>님이 마지막 기록 취소를 요청했어요.
+           <div class="undo-acts"><button id="undoApprove">승인</button><button id="undoReject" class="ghost">거절</button></div></div>`;
+  }
+
+  const rowBtns = [];
+  if (!offline) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>');
+  if (!offline && !s.undoReq && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
+  const minorRow = rowBtns.length ? `<div class="minor-row">${rowBtns.join('<span class="row-sep">·</span>')}</div>` : '';
+
+  app.innerHTML = `
+    ${offline ? '<div class="offline-bar">⚠ 오프라인 — 마지막으로 본 상태예요. 서버가 켜지면 자동으로 갱신돼요.</div>' : ''}
+    ${versus}
+    ${center}${undoBanner}${recent}
+    ${minorRow}`;
+
+  setFoot(offline ? '' : `<button id="switch">다른 사람으로 전환</button>`);
+
+  if ($('#buy')) $('#buy').onclick = async () => {
+    busy = true;
+    try { await jsonPost('/api/buy', {}); playStamp(null, () => { busy = false; load(); }); }
+    catch (e) { busy = false; toast(e.message); load(); }
+  };
+  if ($('#undo')) $('#undo').onclick = async () => {
+    try { await jsonPost('/api/undo', {}); toast('취소 요청을 보냈어요 · 상대 승인 대기'); load(); } catch (e) { toast(e.message); }
+  };
+  if ($('#undoCancel')) $('#undoCancel').onclick = async () => {
+    try { await jsonPost('/api/undo-cancel', {}); toast('요청을 철회했어요'); load(); } catch (e) { toast(e.message); }
+  };
+  if ($('#undoApprove')) $('#undoApprove').onclick = async () => {
+    try { await jsonPost('/api/undo-approve', {}); toast('취소를 승인했어요'); load(); } catch (e) { toast(e.message); load(); }
+  };
+  if ($('#undoReject')) $('#undoReject').onclick = async () => {
+    try { await jsonPost('/api/undo-cancel', {}); toast('취소를 거절했어요'); load(); } catch (e) { toast(e.message); }
+  };
+  if ($('#switch')) $('#switch').onclick = async () => {
+    try { await jsonPost('/api/logout', {}); } catch {}
+    setToken(''); load();
+  };
+  if ($('#nameMe')) $('#nameMe').onclick = () => renameMe(me.name);
+  if ($('#avaMe')) $('#avaMe').onclick = pickAvatar;
+  if ($('#miniBtn')) $('#miniBtn').onclick = () => setMini(true);
+}
+
+// ---------------- 미니 모드 (새 창 없이 현재 창을 컴팩트 위젯으로) ----------------
+let lastState = null;   // 마지막으로 받은 상태
+const MINI_KEY = 'wc_mini';
+let miniMode = (() => { try { return localStorage.getItem(MINI_KEY) === '1'; } catch (e) { return false; } })();
+function setMini(on) {
+  miniMode = on;
+  try { localStorage.setItem(MINI_KEY, on ? '1' : '0'); } catch (e) { }
+  load();
+}
+// 네이티브 앱(WebView2)에 창 크기 축소/복원 요청 — 브라우저면 무시됨(중복 전송 방지)
+let nativeMiniSent = null;
+function notifyNativeMini(want) {
+  if (nativeMiniSent === want) return;
+  nativeMiniSent = want;
+  if (!want) lastMiniH = null; // 미니 벗어나면 다음 진입 때 높이 재전송
+  try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(want ? 'mini:on' : 'mini:off'); } catch (e) { }
+}
+// 미니 창 높이를 콘텐츠에 맞춤: 실제 콘텐츠 높이를 재서 네이티브에 전달 → 창이 딱 그만큼(하단 여백 최소화)
+let lastMiniH = null;
+function syncMiniHeight() {
+  if (!isApp || !miniMode) return;
+  const wrap = document.querySelector('.wrap');
+  if (!wrap) return;
+  const h = Math.ceil(wrap.getBoundingClientRect().bottom) + 12; // 상단 패딩 오프셋 포함 + 하단 여백
+  if (h === lastMiniH) return;
+  lastMiniH = h;
+  try { window.chrome.webview.postMessage('minih:' + h); } catch (e) { }
+}
+// 항상-위(핀): 미니 모드에서만 유효, 전체화면이면 무조건 off. 앱(WebView2)에서만 노출.
+const isApp = !!(window.chrome && window.chrome.webview);
+if (isApp) document.documentElement.classList.add('is-app');
+const PIN_KEY = 'wc_pin';
+let pinOn = (() => { try { return localStorage.getItem(PIN_KEY) === '1'; } catch (e) { return false; } })();
+let nativePinSent = null;
+function notifyNativePin(want) {
+  if (nativePinSent === want) return;
+  nativePinSent = want;
+  try { if (isApp) window.chrome.webview.postMessage(want ? 'pin:on' : 'pin:off'); } catch (e) { }
+}
+const pinBtn = $('#pinToggle');
+function refreshPinBtn() { if (pinBtn) { pinBtn.classList.toggle('on', pinOn); pinBtn.title = pinOn ? '항상 위: 켜짐' : '항상 위: 꺼짐'; } }
+if (pinBtn) {
+  refreshPinBtn();
+  pinBtn.onclick = () => {
+    pinOn = !pinOn;
+    try { localStorage.setItem(PIN_KEY, pinOn ? '1' : '0'); } catch (e) { }
+    refreshPinBtn();
+    notifyNativePin(miniMode && pinOn); // 미니일 때만 실제 적용
+  };
+}
+
+// ---------------- exe 업데이트 알림 (B안) ----------------
+// exe(viewer.cs)가 window.__WC_EXE__ 에 자기 네이티브 버전을 주입.
+// 웹은 항상 최신이므로 EXE_LATEST(현재 네이티브 최신 버전)와 비교해 구버전이면 배지 노출.
+// 새 네이티브 exe 낼 때: viewer.cs APP_VERSION + 여기 EXE_LATEST 함께 올리고, dist exe를 public/download 로 복사해 배포.
+// (자동 다운로드/자기교체는 백신 오탐(Trojan:Win32/Wacatac)으로 제거 — 배지는 다운로드 링크만 연다.)
+const EXE_LATEST = '1.0.0';
+const EXE_DOWNLOAD = 'https://whoscoffee.youn7084084.workers.dev/download/WHOSCOFFEE.exe';
+function cmpVer(a, b) {
+  const pa = String(a).split('.').map(n => parseInt(n, 10) || 0);
+  const pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+function checkExeUpdate() {
+  const cur = window.__WC_EXE__;      // 앱(exe)에서만 주입됨. 브라우저면 undefined → 알림 없음
+  const bar = $('#updBar');
+  if (!bar) return;
+  if (cur && cmpVer(cur, EXE_LATEST) < 0) { bar.href = EXE_DOWNLOAD; bar.classList.add('show'); }
+  else bar.classList.remove('show');
+}
+// 배지 클릭: 다운로드 링크 열기만 (자기교체·자동실행 없음 — 백신 오탐 방지. 사용자가 받아서 교체·재실행)
+(function () {
+  const bar = $('#updBar');
+  if (bar) bar.href = EXE_DOWNLOAD;
+})();
+checkExeUpdate();
+
+function miniIni(n) { return ((n || '?').trim().charAt(0) || '?'); }
+function miniAva(mb) {
+  const inner = (mb && mb.avatar) ? `<img src="${mb.avatar}" alt="" />` : `<span>${esc(miniIni(mb && mb.name))}</span>`;
+  return `<div class="mav">${inner}</div>`;
+}
+function miniCol(mb, cur) {
+  return `<div class="mcol ${cur ? 'cur' : 'dim'}">${miniAva(mb)}<div class="mnm">${esc(mb && mb.name)}</div><div class="mst">${cur ? '지금 차례' : '대기중'}</div></div>`;
+}
+// 미니 카드 내부 HTML (상태별) — 본앱 느낌의 컴팩트 카드
+function renderMini(s, offline) {
+  if (!s) return `<div class="mwait">불러오는 중…</div>`;
+  if (s.phase === 'waiting') {
+    return `<div class="mvs"><div class="mcol cur">${miniAva(s.me)}<div class="mnm">${esc(s.me && s.me.name)}</div></div></div><div class="mwait">상대를 기다리는 중…</div>`;
+  }
+  if (s.phase !== 'active') return `<div class="mwait">품앗이 종료됨</div>`;
+  const myTurn = s.myTurn, me = s.me, mate = s.mate;
+  const vs = `<div class="mvs">${miniCol(me, myTurn)}<span class="mswap">⇄</span>${miniCol(mate, !myTurn)}</div>`;
+  const btn = myTurn
+    ? (offline ? `<div class="mwait">서버 꺼짐 · 도장 불가</div>` : `<button id="mbuy" class="mbuy">☕ 품앗이 수행</button>`)
+    : '';
+  let mundo = '';
+  if (!offline && s.undoReq) {
+    mundo = s.undoReq.byMe
+      ? `<div class="mundo wait">⏳ 취소 요청 중 <button id="mUndoCancel">철회</button></div>`
+      : `<div class="mundo">🔁 <b>${esc(s.undoReq.byName)}</b> 취소 요청<div class="mundo-acts"><button id="mUndoApprove">승인</button><button id="mUndoReject" class="ghost">거절</button></div></div>`;
+  }
+  return vs + btn + mundo;
+}
+
+// 미니 모드 화면 렌더 (active/waiting 일 때만 진입)
+function renderMiniMode(s, offline) {
+  document.body.classList.add('mini-mode');
+  app.innerHTML = `<div class="mini">${renderMini(s, offline)}</div>
+    <div class="minor-row"><button id="miniExit">↩ 전체 화면</button></div>`;
+  setFoot('');
+  if ($('#mbuy')) $('#mbuy').onclick = async () => {
+    busy = true;
+    try { await jsonPost('/api/buy', {}); playStamp(null, () => { busy = false; load(); }); }
+    catch (e) { busy = false; toast(e.message); load(); }
+  };
+  if ($('#miniExit')) $('#miniExit').onclick = () => setMini(false);
+  if ($('#mUndoApprove')) $('#mUndoApprove').onclick = async () => { try { await jsonPost('/api/undo-approve', {}); toast('취소 승인'); load(); } catch (e) { toast(e.message); load(); } };
+  if ($('#mUndoReject')) $('#mUndoReject').onclick = async () => { try { await jsonPost('/api/undo-cancel', {}); toast('취소 거절'); load(); } catch (e) { toast(e.message); } };
+  if ($('#mUndoCancel')) $('#mUndoCancel').onclick = async () => { try { await jsonPost('/api/undo-cancel', {}); toast('요청 철회'); load(); } catch (e) { toast(e.message); } };
+  requestAnimationFrame(syncMiniHeight); // 렌더 후 실제 높이 측정 → 창 높이 맞춤
+}
+
+load();
+</script>
+</body>
+</html>
