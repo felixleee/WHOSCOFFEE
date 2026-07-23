@@ -1,0 +1,18 @@
+{
+  "name": "WHOSCOFFEE — 커피 품앗이 알리미",
+  "short_name": "WHOSCOFFEE",
+  "description": "다음 커피는 누가 살 차례인지 알려주는 순번 앱",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0e6d6",
+  "theme_color": "#f0e6d6",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -2,10 +2,19 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>WHOSCOFFEE ☕</title>
 <link rel="icon" id="fav-ico" href="/favicon.ico" sizes="any" />
-<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('wc_theme')||'light');}catch(e){}</script>
+<!-- PWA (설치·홈 화면 추가) -->
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#f0e6d6" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#211a16" media="(prefers-color-scheme: dark)" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="WHOSCOFFEE" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('wc_theme')||'light');if(window.chrome&&window.chrome.webview)document.documentElement.classList.add('is-app');}catch(e){}</script>
 <style>
   @font-face {
     font-family: "Pretendard Variable";
@@ -28,7 +37,8 @@
   body {
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
-    min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 20px;
+    min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+    padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     scrollbar-width: none;
   }
   body::-webkit-scrollbar { display: none; }
@@ -47,11 +57,11 @@
   .sub { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 6px; }
 
   button { font: inherit; cursor: pointer; }
-  .theme-toggle { position: fixed; top: 14px; right: 14px; z-index: 40; width: 38px; height: 38px;
+  .theme-toggle { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); z-index: 40; width: 38px; height: 38px;
     border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink);
     font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
   .theme-toggle:hover { border-color: var(--brand-soft); }
-  .topleft { position: fixed; top: 14px; left: 14px; z-index: 40; display: flex; align-items: center; gap: 8px; }
+  .topleft { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); z-index: 40; display: flex; align-items: center; gap: 8px; }
   .poll-stamp { color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap; }
   .poll-toggle { display: flex; align-items: center; height: 38px; border-radius: 19px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
   .poll-toggle button { border: none; background: none; color: var(--ink); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; height: 100%; }
@@ -164,7 +174,12 @@
   .undo-acts button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; }
   /* 전체화면: 창 자체는 스크롤 방지. 기록은 rec-list 가 최대 3개만 보이고 내부 스크롤(타이틀 고정) */
   /* 창 높이(viewer.cs normalSize)를 콘텐츠에 맞게 키워 여유롭게 3개가 들어가도록 함 — 섹션 간격은 원래대로 유지 */
-  body:not(.mini-mode) { overflow: hidden; }
+  html.is-app body:not(.mini-mode) { overflow: hidden; } /* 창 스크롤 방지는 데스크톱 앱(고정 창)에서만 — 모바일 브라우저는 정상 스크롤 */
+  html.is-app, html.is-app body { overflow: hidden; }   /* 앱 창은 항상 콘텐츠에 맞음 → 루트/바디 x·y 스크롤바 방지(미니 리사이즈 순간 번쩍임 제거) */
+  html.is-app, html.is-app body { scrollbar-width: none; }
+  html.is-app::-webkit-scrollbar, html.is-app body::-webkit-scrollbar { display: none; }
+  /* 설치형 PWA(홈 화면 추가·standalone)에서만 당겨서 새로고침/바운스 비활성 — 네이티브 앱처럼, 제스처발 높이 재계산 튐 방지. 일반 모바일 브라우저는 그대로 */
+  @media (display-mode: standalone) { html, body { overscroll-behavior: none; } }
   /* 미니 모드 (현재 창을 컴팩트 위젯으로) */
   .mini { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 280px; margin: 0 auto; box-shadow: var(--shadow); }
   .mbrand { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 2px; font-weight: 700; color: var(--muted); }
@@ -207,9 +222,18 @@
   .pin-toggle.on svg { fill: var(--brand); }
   .pin-toggle svg { transform: rotate(-45deg); margin-bottom: 1px; } /* 핀 기울임 + 미세 정렬 */
   /* 업데이트 알림 배지 (하단 중앙, 앱+구버전일 때만) */
-  .upd-bar { display: none; position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 65; align-items: center; gap: 6px; background: var(--brand); color: var(--bg); padding: 8px 16px; border-radius: 30px; font-size: .82rem; font-weight: 700; text-decoration: none; box-shadow: var(--shadow); white-space: nowrap; }
+  .upd-bar { display: none; position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 65; align-items: center; gap: 6px; background: var(--brand); color: var(--bg); padding: 8px 16px; border-radius: 30px; font-size: .82rem; font-weight: 700; text-decoration: none; box-shadow: var(--shadow); white-space: nowrap; }
   .upd-bar.show { display: inline-flex; }
   body.mini-mode .upd-bar { display: none !important; }
+  /* 처리 중 오버레이 — 흰 반투명 + 커피 원두 스핀 (버튼 누르고 반영될 때까지) */
+  .busy-overlay { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: #f0e6d6; }
+  :root[data-theme="dark"] .busy-overlay { background: #211a16; }
+  /* 모든 로딩 오버레이 불투명 통일(앱 배경색). .solid 는 동일값 — 하위호환 유지 */
+  .busy-overlay.solid { background: #f0e6d6; }
+  :root[data-theme="dark"] .busy-overlay.solid { background: #211a16; }
+  .busy-overlay.show { display: flex; }
+  .busy-bean { transform-origin: center; animation: busy-spin 1.1s cubic-bezier(.6,.1,.4,.9) infinite; }
+  @keyframes busy-spin { to { transform: rotate(360deg); } }
   /* 좌상단: 새로고침 버튼 + 마지막 갱신 시각만 (작게·배경 없음, 주기설정 버튼 숨김) */
   body.mini-mode .topleft { top: 8px; left: 8px; gap: 4px; }
   body.mini-mode .poll-toggle { height: auto; border: none; background: none; box-shadow: none; border-radius: 0; }
@@ -272,9 +296,17 @@
     <span class="word">WHOSCOFFEE</span>
     <small>오늘 커피는 누가?</small>
   </h1>
-  <div id="app" class="card">불러오는 중…</div>
+  <div id="app" class="card"></div>
 </div>
 <div class="foot-switch" id="footSwitch"></div>
+
+<!-- 처리 중 오버레이: 흰 반투명 + 커피 원두 스핀 -->
+<div id="busyOverlay" class="busy-overlay show solid" aria-hidden="true">
+  <svg class="busy-bean" width="46" height="46" viewBox="0 0 256 256" aria-hidden="true">
+    <g transform="rotate(-28 100 96)"><ellipse cx="100" cy="96" rx="28" ry="38" fill="var(--logo)"/><path d="M100 64 C92 82 108 110 100 128" fill="none" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/></g>
+    <g transform="rotate(-28 156 160)"><ellipse cx="156" cy="160" rx="28" ry="38" fill="var(--logo)"/><path d="M156 128 C148 146 164 174 156 192" fill="none" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/></g>
+  </svg>
+</div>
 
 <div id="stampOverlay" class="stamp-overlay">
   <div class="stamp-mark" id="stampMark">
@@ -330,6 +362,18 @@
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app');
+
+// 처리 중 오버레이 (흰 반투명 + 원두 스핀). 빠른 요청엔 안 뜨게 120ms 지연 후 표시, 렌더 시 해제.
+const busyOverlay = $('#busyOverlay');
+let busyTimer = null;
+function showBusy() {
+  if (busyTimer) return;
+  busyTimer = setTimeout(() => { busyTimer = null; if (busyOverlay) busyOverlay.classList.add('show'); }, 120);
+}
+function hideBusy() {
+  if (busyTimer) { clearTimeout(busyTimer); busyTimer = null; }
+  if (busyOverlay) busyOverlay.classList.remove('show', 'solid');
+}
 const BEAN = `<svg width="46" height="46" viewBox="0 0 100 100" style="margin:0 auto 6px;display:block" aria-hidden="true"><g transform="rotate(-30 40 38)"><ellipse cx="40" cy="38" rx="11" ry="15" fill="var(--brand)"/><path d="M40 25 C36 31 44 45 40 51" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></g><g transform="rotate(-30 60 62)"><ellipse cx="60" cy="62" rx="11" ry="15" fill="var(--brand)"/><path d="M60 49 C56 55 64 69 60 75" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></g></svg>`;
 
 // 테마 토글 (시스템 무시, 수동 선택 + localStorage 유지)
@@ -364,7 +408,17 @@ async function api(path, opts = {}) {
   if (!res.ok) throw new Error(data.error || '오류가 발생했어요');
   return data;
 }
-const jsonPost = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+const jsonPost = async (path, body, opts) => {
+  const quiet = opts && opts.noBusy; // 도장 등 자체 애니가 있는 액션은 오버레이 생략
+  if (!quiet) showBusy();
+  try {
+    return await api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  } catch (e) {
+    if (!quiet) hideBusy();
+    throw e;
+  }
+  // 성공 시엔 유지 — 뒤이은 render()에서 hideBusy() 로 해제(반영 완료까지 표시)
+};
 
 const POLL_KEY = 'wc_poll';
 const POLL_OPTS = [
@@ -503,6 +557,7 @@ async function load(isPoll) {
   let s;
   try { s = await api('/api/state'); }
   catch (e) {
+    hideBusy(); // 로드 실패 시 초기/액션 스피너가 멈춰 남지 않게
     // 서버가 꺼져 연결 실패 → 마지막으로 본 상태(읽기 전용) 표시, 폴링은 계속(켜지면 자동 복구)
     if (e.offline) {
       const cached = localStorage.getItem(STATE_KEY);
@@ -519,7 +574,7 @@ async function load(isPoll) {
   notifyNativeMini(miniMode && inRoom); // 앱 창 크기 축소/복원
   notifyNativePin(miniMode && inRoom && pinOn); // 항상-위: 미니일 때만, 전체화면이면 off
   // 미니 모드 + 방 입장 상태면 컴팩트 위젯으로, 아니면 일반 화면
-  if (miniMode && inRoom) {
+  if (miniMode && inRoom && isApp) {
     showTop(true); // 좌상단 새로고침+갱신시각 (미니에선 컴팩트하게)
     renderMiniMode(s);
     setPoll(true);
@@ -534,6 +589,7 @@ async function load(isPoll) {
 
 // 1) 첫 화면: 만들기 / 참여
 function renderSetupHome(s) {
+  hideBusy();
   app.innerHTML = `
     <div class="hero">${BEAN}<div class="name" style="font-size:1.4rem">오늘도 커피 품앗이</div>
       <div class="label">새 품앗이를 열거나 받은 PIN으로 참여하세요</div></div>
@@ -587,6 +643,7 @@ function renderJoin() {
 
 // 2) 대기 화면 (방장이 상대 참여 대기)
 function renderWaiting(s) {
+  hideBusy();
   app.innerHTML = `
     <div class="hero wait">${BEAN}<div class="label">방을 열었어요, ${esc(s.me.name)}님</div>
       <div class="name" style="font-size:1.2rem">상대를 기다리는 중<span class="dots"></span></div></div>
@@ -605,6 +662,7 @@ function renderWaiting(s) {
 
 // 3) 품앗이 메인 (내 관점)
 function renderMain(s, offline) {
+  hideBusy();
   const myTurn = s.myTurn, me = s.me, mate = s.mate;
   const eul = n => { if (!n) return '를'; const c = n.charCodeAt(n.length - 1); if (c < 0xAC00 || c > 0xD7A3) return '를'; return (c - 0xAC00) % 28 ? '을' : '를'; };
   const ini = n => ((n || '?').trim().charAt(0) || '?');
@@ -661,7 +719,7 @@ function renderMain(s, offline) {
   }
 
   const rowBtns = [];
-  if (!offline) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>');
+  if (!offline && isApp) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>'); // 미니=네이티브 창 축소 → 앱(WebView2)에서만, 모바일/브라우저엔 숨김
   if (!offline && !s.undoReq && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
   const minorRow = rowBtns.length ? `<div class="minor-row">${rowBtns.join('<span class="row-sep">·</span>')}</div>` : '';
 
@@ -675,7 +733,7 @@ function renderMain(s, offline) {
 
   if ($('#buy')) $('#buy').onclick = async () => {
     busy = true;
-    try { await jsonPost('/api/buy', {}); playStamp(null, () => { busy = false; load(); }); }
+    try { await jsonPost('/api/buy', {}, { noBusy: true }); playStamp(null, () => { busy = false; load(); }); }
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#undo')) $('#undo').onclick = async () => {
@@ -706,6 +764,7 @@ let miniMode = (() => { try { return localStorage.getItem(MINI_KEY) === '1'; } c
 function setMini(on) {
   miniMode = on;
   try { localStorage.setItem(MINI_KEY, on ? '1' : '0'); } catch (e) { }
+  if (busyOverlay) busyOverlay.classList.add('show'); // 전환 즉시 스피너(창 리사이즈/리플로우를 덮음) → load()의 render 에서 해제
   load();
 }
 // 네이티브 앱(WebView2)에 창 크기 축소/복원 요청 — 브라우저면 무시됨(중복 전송 방지)
@@ -714,7 +773,8 @@ function notifyNativeMini(want) {
   if (nativeMiniSent === want) return;
   nativeMiniSent = want;
   if (!want) lastMiniH = null; // 미니 벗어나면 다음 진입 때 높이 재전송
-  try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(want ? 'mini:on' : 'mini:off'); } catch (e) { }
+  // 미니 진입은 mini:on(고정 250×300 → 새로고침 때 높이가 왔다갔다) 대신 syncMiniHeight의 minih 로만 사이징(폭·높이 한 번에). 전체화면 복귀만 mini:off 전송.
+  try { if (!want && window.chrome && window.chrome.webview) window.chrome.webview.postMessage('mini:off'); } catch (e) { }
 }
 // 미니 창 높이를 콘텐츠에 맞춤: 실제 콘텐츠 높이를 재서 네이티브에 전달 → 창이 딱 그만큼(하단 여백 최소화)
 let lastMiniH = null;
@@ -755,7 +815,7 @@ if (pinBtn) {
 // 웹은 항상 최신이므로 EXE_LATEST(현재 네이티브 최신 버전)와 비교해 구버전이면 배지 노출.
 // 새 네이티브 exe 낼 때: viewer.cs APP_VERSION + 여기 EXE_LATEST 함께 올리고, dist exe를 public/download 로 복사해 배포.
 // (자동 다운로드/자기교체는 백신 오탐(Trojan:Win32/Wacatac)으로 제거 — 배지는 다운로드 링크만 연다.)
-const EXE_LATEST = '1.0.0';
+const EXE_LATEST = '1.1.0';
 const EXE_DOWNLOAD = 'https://whoscoffee.youn7084084.workers.dev/download/WHOSCOFFEE.exe';
 function cmpVer(a, b) {
   const pa = String(a).split('.').map(n => parseInt(n, 10) || 0);
@@ -811,13 +871,13 @@ function renderMini(s, offline) {
 
 // 미니 모드 화면 렌더 (active/waiting 일 때만 진입)
 function renderMiniMode(s, offline) {
-  document.body.classList.add('mini-mode');
+  document.body.classList.add('mini-mode'); // hideBusy는 아래 리사이즈 정착 후로 미룸(전환/새로고침 깜빡임을 오버레이로 덮음)
   app.innerHTML = `<div class="mini">${renderMini(s, offline)}</div>
     <div class="minor-row"><button id="miniExit">↩ 전체 화면</button></div>`;
   setFoot('');
   if ($('#mbuy')) $('#mbuy').onclick = async () => {
     busy = true;
-    try { await jsonPost('/api/buy', {}); playStamp(null, () => { busy = false; load(); }); }
+    try { await jsonPost('/api/buy', {}, { noBusy: true }); playStamp(null, () => { busy = false; load(); }); }
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#miniExit')) $('#miniExit').onclick = () => setMini(false);
@@ -825,9 +885,17 @@ function renderMiniMode(s, offline) {
   if ($('#mUndoReject')) $('#mUndoReject').onclick = async () => { try { await jsonPost('/api/undo-cancel', {}); toast('취소 거절'); load(); } catch (e) { toast(e.message); } };
   if ($('#mUndoCancel')) $('#mUndoCancel').onclick = async () => { try { await jsonPost('/api/undo-cancel', {}); toast('요청 철회'); load(); } catch (e) { toast(e.message); } };
   requestAnimationFrame(syncMiniHeight); // 렌더 후 실제 높이 측정 → 창 높이 맞춤
+  setTimeout(hideBusy, 220); // 미니 레이아웃+네이티브 리사이즈가 자리잡은 뒤 오버레이 해제(깜빡임/x·y 스크롤 순간을 덮음)
 }
 
+if (busyOverlay) busyOverlay.classList.add('show', 'solid'); // 첫 로딩: 불투명 배경 + 원두 스피너(‘불러오는 중’ 텍스트 대체)
 load();
+
+// 서비스워커 폐기 — 예전 SW/캐시가 남아 blank 를 유발할 수 있어 등록 해제 + 캐시 정리(heal)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+}
+if (window.caches) { caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {}); }
 </script>
 </body>
 </html>

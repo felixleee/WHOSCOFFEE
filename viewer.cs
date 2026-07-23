@@ -21,7 +21,7 @@ using Microsoft.Win32;
 
 class Viewer
 {
-    const string APP_VERSION = "1.0.0"; // 네이티브 버전 (새 빌드 시 index.html EXE_LATEST 과 함께 올림)
+    const string APP_VERSION = "1.1.0"; // 네이티브 버전 (새 빌드 시 index.html EXE_LATEST 과 함께 올림)
 
     [DllImport("kernel32", CharSet = CharSet.Unicode)]
     static extern bool SetDllDirectory(string path);
@@ -91,10 +91,21 @@ class Viewer
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
+        // 지난 종료 시 창 모드/크기 복원 → 미니로 껐으면 다음 실행도 미니로 바로(시작 시 전체 모드 번쩍 방지)
+        string cfgDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WHOSCOFFEE");
+        string cfgFile = Path.Combine(cfgDir, "window.txt");
+        Size startSize = new Size(380, 800);
+        try {
+            if (File.Exists(cfgFile)) {
+                string sv = File.ReadAllText(cfgFile).Trim();
+                if (sv.StartsWith("mini:")) { int sh; if (int.TryParse(sv.Substring(5), out sh)) { if (sh < 200) sh = 200; if (sh > 460) sh = 460; startSize = new Size(250, sh); } }
+            }
+        } catch { }
+
         var form = new Form
         {
             Text = "WHOSCOFFEE",
-            ClientSize = new Size(380, 800),
+            ClientSize = startSize,
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedSingle, // 크기 조절 막기
             MaximizeBox = false                            // 최대화 버튼 비활성
@@ -115,6 +126,7 @@ class Viewer
                 await wv.EnsureCoreWebView2Async(env);
                 wv.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 wv.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                wv.DefaultBackgroundColor = System.Drawing.Color.FromArgb(240, 230, 214); // 로딩 중 흰 번쩍 대신 앱 베이지
                 // 웹의 미니 모드 토글 → 창 크기 축소/복원 (항상-위는 안 함)
                 var normalSize = new Size(380, 800); // 기록 3개까지 여유롭게 (간격 유지)
                 // 화면(작업영역)보다 크면 맞춰 축소 — 작은 노트북에서 창이 화면 밖으로 나가지 않게
@@ -123,12 +135,14 @@ class Viewer
                     if (normalSize.Height > maxH && maxH > 400) normalSize = new Size(normalSize.Width, maxH);
                 } catch { }
                 var miniSize = new Size(250, 300);
+                string lastWin = null;
+                Action<string> saveWin = (v) => { if (v == lastWin) return; lastWin = v; try { Directory.CreateDirectory(cfgDir); File.WriteAllText(cfgFile, v); } catch { } };
                 wv.CoreWebView2.WebMessageReceived += (s2, e2) =>
                 {
                     string msg = null;
                     try { msg = e2.TryGetWebMessageAsString(); } catch { }
                     if (msg == "mini:on") form.ClientSize = miniSize;
-                    else if (msg == "mini:off") form.ClientSize = normalSize;
+                    else if (msg == "mini:off") { form.ClientSize = normalSize; saveWin("full"); }
                     else if (msg == "pin:on") form.TopMost = true;   // 항상 위 (미니 전용)
                     else if (msg == "pin:off") form.TopMost = false; // 전체화면·해제 시
                     else if (msg != null && msg.StartsWith("minih:"))
@@ -140,6 +154,7 @@ class Viewer
                             if (h < 200) h = 200;
                             if (h > 460) h = 460;
                             form.ClientSize = new Size(miniSize.Width, h);
+                            saveWin("mini:" + h);
                         }
                     }
                 };
