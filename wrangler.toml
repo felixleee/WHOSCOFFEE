@@ -14,3 +14,8 @@ database_id = "641a6176-7b23-4fe3-8ff5-fc0a58a680f3"
 directory = "./public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+# 웹푸시(VAPID) 공개값 — 공개키/subject 는 공개돼도 안전. 비공개키는 `wrangler secret VAPID_JWK` 로 보관.
+[vars]
+VAPID_PUBLIC = "BGxDtl10Cs5Gp3nt8kj6_-rny5fswUUldIMxOzDt7T5bCSeFERKxtXa_Bks2GDoF-XZKHGV61rf1FEP3HWW_Kac"
+VAPID_SUBJECT = "mailto:106325@ctr.co.kr"

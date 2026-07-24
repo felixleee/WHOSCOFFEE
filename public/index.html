@@ -273,6 +273,7 @@
   .m-btn { flex: 1; padding: 11px; border-radius: 10px; font-weight: 700; font: inherit; cursor: pointer; border: none; }
   .m-cancel { background: var(--line); color: var(--ink); }
   .m-ok { background: var(--brand); color: var(--bg); }
+  .minor-row button.on { color: var(--brand); font-weight: 800; } /* 알림 켜짐 상태 강조 */
   /* 내 차례 복귀 1회성 팝업 (반투명 배경 + 커피 아이콘 + 알겠어요) — 페이드인만 */
   .turn-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(24,18,12,.55); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .28s ease, visibility .28s ease; }
   .turn-modal.show { opacity: 1; visibility: visible; pointer-events: auto; }
@@ -494,7 +495,7 @@ async function doRefresh(isPoll) {
 // 강제 새로고침: 캐시(Storage) 삭제 + 잔여 SW 해제 + 전체 리로드. 설치형 PWA는 강력 새로고침이 없어 이걸로 앱 업데이트/캐시 문제 해결
 async function hardReload() {
   try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) { }
-  try { if ('serviceWorker' in navigator) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } } catch (e) { }
+  try { if ('serviceWorker' in navigator) { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update(); } } catch (e) { } // SW 최신화(해제 안 함 → 네트워크 전용이라 안전, 푸시 구독 유지)
   location.reload(); // index.html 은 max-age=0, must-revalidate → 리로드 시 최신으로 재검증(?r= 쿼리 안 붙여 standalone 높이 이슈 회피)
 }
 // 탭: 가벼운 데이터 새로고침(상단 스피너만) · 길게 누르기: 강제 새로고침(전체 리로드)
@@ -647,6 +648,50 @@ function maybeShowTurnPopup(s) {
     ov.classList.remove('show');
     try { localStorage.setItem(TURN_SEEN_KEY, marker); } catch (_) {}
   };
+}
+
+// ---------------- 웹푸시 알림 ----------------
+const VAPID_PUBLIC = 'BGxDtl10Cs5Gp3nt8kj6_-rny5fswUUldIMxOzDt7T5bCSeFERKxtXa_Bks2GDoF-XZKHGV61rf1FEP3HWW_Kac';
+const NOTIF_UI = false; // 알림 켜기 버튼 임시 숨김(기능은 구현·유지, true 로 바꾸면 재노출)
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+function urlB64ToUint8(b64) {
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  const s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s), arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+async function currentSub() {
+  try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (_) { return null; }
+}
+async function enableNotif() {
+  try {
+    if (Notification.permission === 'denied') { toast('알림이 차단돼 있어요. 설정에서 허용해주세요.'); return; }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('알림 권한이 필요해요.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(VAPID_PUBLIC) });
+    await jsonPost('/api/subscribe', { subscription: sub.toJSON() });
+    toast('알림을 켰어요 ☕');
+  } catch (e) {
+    toast('알림을 켜지 못했어요. 홈 화면에 설치한 뒤 다시 시도해주세요.');
+  }
+  refreshNotifBtn();
+}
+async function disableNotif() {
+  try {
+    const sub = await currentSub();
+    if (sub) { try { await jsonPost('/api/unsubscribe', { endpoint: sub.endpoint }); } catch (_) {} await sub.unsubscribe(); }
+    toast('알림을 껐어요.');
+  } catch (_) {}
+  refreshNotifBtn();
+}
+async function refreshNotifBtn() {
+  const btn = $('#notifBtn'); if (!btn) return;
+  const on = Notification.permission === 'granted' && !!(await currentSub());
+  btn.textContent = on ? '🔔 알림 켜짐' : '🔔 알림 받기';
+  btn.classList.toggle('on', on);
+  btn.onclick = on ? disableNotif : enableNotif;
 }
 
 // ---------------- 라우팅 ----------------
@@ -818,6 +863,7 @@ function renderMain(s, offline) {
 
   const rowBtns = [];
   if (!offline && isApp) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>'); // 미니=네이티브 창 축소 → 앱(WebView2)에서만, 모바일/브라우저엔 숨김
+  if (!offline && NOTIF_UI && pushSupported()) rowBtns.push('<button id="notifBtn">🔔 알림 받기</button>'); // 내 차례 폰 알림 켜기/끄기(NOTIF_UI로 임시 숨김)
   if (!offline && !s.undoReq && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
   const minorRow = rowBtns.length ? `<div class="minor-row">${rowBtns.join('<span class="row-sep">·</span>')}</div>` : '';
 
@@ -853,6 +899,7 @@ function renderMain(s, offline) {
   if ($('#nameMe')) $('#nameMe').onclick = () => renameMe(me.name);
   if ($('#avaMe')) $('#avaMe').onclick = pickAvatar;
   if ($('#miniBtn')) $('#miniBtn').onclick = () => setMini(true);
+  refreshNotifBtn(); // 알림 버튼 현재 구독 상태 반영(켜짐/받기)
 }
 
 // ---------------- 미니 모드 (새 창 없이 현재 창을 컴팩트 위젯으로) ----------------
@@ -991,11 +1038,11 @@ function renderMiniMode(s, offline) {
 if (busyOverlay) busyOverlay.classList.add('show', 'solid'); // 첫 로딩: 불투명 배경 + 원두 스피너(‘불러오는 중’ 텍스트 대체)
 load();
 
-// 서비스워커 폐기 — 예전 SW/캐시가 남아 blank 를 유발할 수 있어 등록 해제 + 캐시 정리(heal)
+// 서비스워커 등록 — 네트워크 전용(캐시 안 함) + WebAPK 설치성 + 푸시 수신 준비.
+// updateViaCache:'none' → sw.js 업데이트는 항상 네트워크로 확인(신선도 보장). 캐시 정리는 SW activate 가 담당.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
-if (window.caches) { caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {}); }
 </script>
 </body>
 </html>

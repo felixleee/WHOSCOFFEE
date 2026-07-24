@@ -47,3 +47,13 @@ CREATE TABLE IF NOT EXISTS config (
   k TEXT PRIMARY KEY,
   v TEXT
 );
+-- 웹푸시 구독(기기별). endpoint 로 유일. 상대가 품앗이하면 이 구독으로 푸시 발송.
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,
+  user_key   TEXT NOT NULL,
+  room_id    TEXT NOT NULL,
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_key);

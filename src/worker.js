@@ -3,12 +3,14 @@
 // 이름/아바타는 members 행에서 변경. 세션은 token→(user_key, room_id).
 // 화면(index.html)·favicon 은 [assets], /api/* 만 이 워커가 처리.
 
+import { sendPush } from './webpush.js';
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
       try {
-        return await handleApi(request, env, url.pathname);
+        return await handleApi(request, env, ctx, url.pathname);
       } catch (e) {
         return json({ error: e.message || '알 수 없는 오류' }, 400);
       }
@@ -24,7 +26,7 @@ function json(obj, code = 200) {
   });
 }
 
-async function handleApi(request, env, p) {
+async function handleApi(request, env, ctx, p) {
   const DB = env.DB;
   const token = request.headers.get('X-Token');
   const m = request.method;
@@ -54,6 +56,7 @@ async function handleApi(request, env, p) {
     const { note } = await request.json();
     await recordBuy(DB, room.id, key, note);
     await clearUndoRequest(DB, room.id); // 새 도장 → 이전 취소 요청은 무효
+    ctx.waitUntil(notifyTurn(env, DB, room, key)); // 상대에게 "내 차례" 푸시(응답 지연 없이 백그라운드)
     return json({ ok: true });
   }
   if (p === '/api/undo' && m === 'POST') {
@@ -97,6 +100,20 @@ async function handleApi(request, env, p) {
   if (p === '/api/avatar' && m === 'POST') {
     const { avatar } = await request.json();
     return json(await setAvatar(DB, token, avatar));
+  }
+  if (p === '/api/subscribe' && m === 'POST') {
+    // 웹푸시 구독 저장(기기별). 토큰으로 사용자·방 식별.
+    const ctx = await meAndRoom(DB, token);
+    if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
+    const { subscription } = await request.json();
+    if (!subscription || !subscription.endpoint) return json({ error: '구독 정보가 없어요.' }, 400);
+    await saveSub(DB, ctx.room.id, ctx.key, subscription);
+    return json({ ok: true });
+  }
+  if (p === '/api/unsubscribe' && m === 'POST') {
+    const { endpoint } = await request.json();
+    if (endpoint) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(endpoint).run();
+    return json({ ok: true });
   }
   return json({ error: '없는 API입니다.' }, 404);
 }
@@ -225,6 +242,7 @@ async function closeRoom(DB, roomId) {
   await DB.prepare('DELETE FROM sessions WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM members WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM undo_requests WHERE room_id = ?').bind(roomId).run();
+  await DB.prepare('DELETE FROM push_subs WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM rooms WHERE id = ?').bind(roomId).run();
 }
 
@@ -256,6 +274,31 @@ async function setAvatar(DB, token, avatar) {
 async function recordBuy(DB, roomId, key, note) {
   await DB.prepare('INSERT INTO events(room_id, date, user_key, note, created_at) VALUES(?, ?, ?, ?, ?)')
     .bind(roomId, kstToday(), key, note || null, nowIso()).run();
+}
+// ---- 웹푸시 구독 저장 ----
+async function saveSub(DB, roomId, key, sub) {
+  const k = sub.keys || {};
+  await DB.prepare(
+    `INSERT INTO push_subs(endpoint, user_key, room_id, p256dh, auth, created_at) VALUES(?, ?, ?, ?, ?, ?)
+     ON CONFLICT(endpoint) DO UPDATE SET user_key = excluded.user_key, room_id = excluded.room_id, p256dh = excluded.p256dh, auth = excluded.auth`
+  ).bind(sub.endpoint, key, roomId, k.p256dh || '', k.auth || '', nowIso()).run();
+}
+// 상대(=이제 차례가 된 사람)의 모든 기기 구독으로 "내 차례" 푸시 발송. 실패/만료 구독은 정리.
+async function notifyTurn(env, DB, room, buyerKey) {
+  try {
+    if (!env.VAPID_JWK) return; // 키 미설정이면 스킵
+    const targetKey = room.creator.key === buyerKey ? (room.joiner && room.joiner.key) : room.creator.key;
+    if (!targetKey) return;
+    const buyerName = keyName(room, buyerKey);
+    const subs = (await DB.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE user_key = ?').bind(targetKey).all()).results || [];
+    const payload = { title: '☕ 내 차례가 돌아왔어요!', body: `${buyerName}님이 품앗이 했어요 · 이제 당신이 품앗이를 수행할 차례예요`, url: '/' };
+    for (const s of subs) {
+      try {
+        const status = await sendPush(env, s, payload);
+        if (status === 404 || status === 410) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(s.endpoint).run();
+      } catch (e) { /* 개별 발송 실패는 무시 */ }
+    }
+  } catch (e) { /* 전체 실패해도 buy 응답에는 영향 없음 */ }
 }
 // ---- 취소 요청(undo_requests): 방마다 최대 1건, 상대 승인 시 실제 삭제 ----
 async function getUndoRequest(DB, roomId) {
