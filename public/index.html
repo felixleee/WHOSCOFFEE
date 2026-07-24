@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>WHOSCOFFEE ☕</title>
 <link rel="icon" id="fav-ico" href="/favicon.ico" sizes="any" />
 <!-- PWA (설치·홈 화면 추가) -->
@@ -25,27 +25,32 @@
   }
   :root {
     --bg: #f0e6d6; --card: #fffdf7; --ink: #26201c; --muted: #8a7d6c;
-    --line: #e2d4bd; --brand: #1c1c1c; --brand-soft: #8c8377; --stamp: #1c1c1c; --logo: #1c1c1c;
+    --line: #e2d4bd; --brand: #3a2618; --brand-soft: #8c8377; --stamp: #3a2618; --logo: #3a2618; --ring: #6f4e37;
     --shadow: 0 8px 30px rgba(80, 54, 34, .12);
   }
   :root[data-theme="dark"] {
     --bg: #211a16; --card: #2c2420; --ink: #f0e7dd; --muted: #a3917f;
     --line: #3d332c; --brand: #f0e6d6; --brand-soft: #9a8f80;
-    --stamp: #f0e6d6; --shadow: 0 8px 30px rgba(0,0,0,.35); --logo: #f0e6d6;
+    --stamp: #f0e6d6; --shadow: 0 8px 30px rgba(0,0,0,.35); --logo: #f0e6d6; --ring: var(--brand);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: "Pretendard Variable", Pretendard, "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
-    min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; align-items: center; /* svh=가장 작은 뷰포트 → 시스템바 감안, 화면 넘침(스크롤)·콜드실행/새로고침 높이 불일치 방지 */
     padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     scrollbar-width: none;
   }
   body::-webkit-scrollbar { display: none; }
   .wrap { width: 100%; max-width: 360px; }
+  html { touch-action: manipulation; -webkit-text-size-adjust: 100%; } /* 모바일 더블탭 확대 방지 + iOS 폰트 자동확대 방지 */
+  body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; } /* 앱처럼 로고/텍스트 드래그(블록)·탭 하이라이트(파란블록) 방지 */
+  input, textarea, .pinbox .code { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; } /* 입력·PIN 코드는 선택/복사 허용 */
   h1 { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 8px 0 20px; color: var(--logo); }
   h1 .word { font-size: 1.3rem; letter-spacing: 4px; font-weight: 700; }
-  h1 .logo-mark { display: block; margin-top: 5px; }
+  h1 .logo-mark { display: block; margin-top: 5px; transform-box: fill-box; transform-origin: center; transition: transform .25s ease; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: pointer; } /* fill-box: SVG transform transition 정상화(기본 view-box는 깨짐) */
+  h1 .logo-mark.charging { transform: translate(0px, 0px) rotate(1440deg) scale(1.12); transition: transform 2s cubic-bezier(.45, 0, .9, 1); } /* 2초 길게 누르면 스피너처럼 감김 */
+  .busy-overlay.no-bean .busy-bean { display: none; } /* 로고가 중앙으로 날아오는 동안엔 오버레이 원두 숨김(날아온 로고가 대신) */
   h1 small { font-size: .7rem; color: var(--muted); letter-spacing: 2px; font-weight: 400; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px 22px; box-shadow: var(--shadow); }
 
@@ -130,13 +135,13 @@
   .versus3 { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; }
   .vcol { text-align: center; min-width: 0; }
   .ava { border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 9px; position: relative; background: var(--brand); color: var(--bg); }
-  .vcol.cur .ava { width: 60px; height: 60px; box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--brand); }
+  .vcol.cur .ava { width: 60px; height: 60px; box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--ring); }
   .vcol.dim .ava { width: 44px; height: 44px; background: var(--brand-soft); }
   .ava-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
   .ava-ini { font-weight: 800; font-size: 1.1rem; }
   .vcol.dim .ava-ini { font-size: .95rem; }
   .ava.editable { cursor: pointer; }
-  .ava-cam { position: absolute; right: -5px; bottom: -5px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px var(--card); transition: transform .1s; }
+  .ava-cam { position: absolute; right: -5px; bottom: -5px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: var(--bg); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px var(--card); transition: transform .1s; }
   .ava.editable:active .ava-cam { transform: scale(.9); }
   .ava-cam svg { display: block; width: 11px; height: 11px; }
   .vnm { font-size: 13px; font-weight: 700; color: var(--ink); max-width: 96px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 auto; }
@@ -186,7 +191,7 @@
   .mvs { display: flex; align-items: center; justify-content: center; gap: 14px; }
   .mcol { display: flex; flex-direction: column; align-items: center; gap: 9px; }
   .mav { border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; font-weight: 800; background: var(--brand); color: var(--bg); }
-  .mcol.cur .mav { width: 58px; height: 58px; font-size: 1.05rem; box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--brand); }
+  .mcol.cur .mav { width: 58px; height: 58px; font-size: 1.05rem; box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--ring); }
   .mcol.dim .mav { width: 44px; height: 44px; font-size: .95rem; background: var(--brand-soft); }
   .mav img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
   .mnm { font-size: 12px; font-weight: 700; color: var(--ink); max-width: 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -268,6 +273,21 @@
   .m-btn { flex: 1; padding: 11px; border-radius: 10px; font-weight: 700; font: inherit; cursor: pointer; border: none; }
   .m-cancel { background: var(--line); color: var(--ink); }
   .m-ok { background: var(--brand); color: var(--bg); }
+  /* 내 차례 복귀 1회성 팝업 (반투명 배경 + 커피 아이콘 + 알겠어요) — 페이드인만 */
+  .turn-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(24,18,12,.55); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .28s ease, visibility .28s ease; }
+  .turn-modal.show { opacity: 1; visibility: visible; pointer-events: auto; }
+  .turn-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px 22px 20px; width: 100%; max-width: 300px; text-align: center; box-shadow: var(--shadow); }
+  .turn-cup { display: block; margin: 0 auto 14px; }
+  .turn-h { font-size: 1.15rem; font-weight: 900; color: var(--ink); margin: 0 0 6px; word-break: keep-all; }
+  .turn-s { font-size: .85rem; color: var(--muted); margin: 0 0 18px; line-height: 1.55; word-break: keep-all; }
+  .turn-btn { width: 100%; border: none; border-radius: 13px; background: var(--brand); color: var(--bg); font: inherit; font-size: 1rem; font-weight: 800; padding: 14px; cursor: pointer; }
+  .turn-btn:active { transform: scale(.98); }
+  body.mini-mode .turn-modal { padding: 14px; }
+  body.mini-mode .turn-card { padding: 16px 14px 14px; border-radius: 16px; }
+  body.mini-mode .turn-cup { width: 50px; height: 46px; margin-bottom: 8px; }
+  body.mini-mode .turn-h { font-size: .98rem; }
+  body.mini-mode .turn-s { font-size: .74rem; margin-bottom: 12px; }
+  body.mini-mode .turn-btn { padding: 10px; font-size: .9rem; }
 </style>
 </head>
 <body>
@@ -302,7 +322,7 @@
 
 <!-- 처리 중 오버레이: 흰 반투명 + 커피 원두 스핀 -->
 <div id="busyOverlay" class="busy-overlay show solid" aria-hidden="true">
-  <svg class="busy-bean" width="46" height="46" viewBox="0 0 256 256" aria-hidden="true">
+  <svg class="busy-bean" width="52" height="52" viewBox="0 0 256 256" aria-hidden="true">
     <g transform="rotate(-28 100 96)"><ellipse cx="100" cy="96" rx="28" ry="38" fill="var(--logo)"/><path d="M100 64 C92 82 108 110 100 128" fill="none" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/></g>
     <g transform="rotate(-28 156 160)"><ellipse cx="156" cy="160" rx="28" ry="38" fill="var(--logo)"/><path d="M156 128 C148 146 164 174 156 192" fill="none" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/></g>
   </svg>
@@ -356,6 +376,14 @@
       <button class="m-btn m-cancel" id="renameCancel">취소</button>
       <button class="m-btn m-ok" id="renameOk">저장</button>
     </div>
+  </div>
+</div>
+<div id="turnModal" class="turn-modal">
+  <div class="turn-card">
+    <svg class="turn-cup" width="72" height="66" viewBox="0 0 100 96" aria-hidden="true"><path d="M38 20 C33 13 43 9 38 2" fill="none" stroke="var(--brand-soft)" stroke-width="3.5" stroke-linecap="round"/><path d="M54 20 C49 13 59 9 54 2" fill="none" stroke="var(--brand-soft)" stroke-width="3.5" stroke-linecap="round"/><path d="M22 34 H74 V62 A20 20 0 0 1 54 82 H42 A20 20 0 0 1 22 62 Z" fill="var(--brand)"/><path d="M74 42 H84 A12 12 0 0 1 84 68 H74" fill="none" stroke="var(--brand)" stroke-width="6"/><circle cx="40" cy="56" r="3.5" fill="var(--card)"/><circle cx="56" cy="56" r="3.5" fill="var(--card)"/><path d="M43 66 Q48 70 53 66" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></svg>
+    <p class="turn-h">☕ 내 차례가 돌아왔어요!</p>
+    <p class="turn-s" id="turnSub"></p>
+    <button class="turn-btn" id="turnOk">오케이 ☕</button>
   </div>
 </div>
 
@@ -463,7 +491,55 @@ async function doRefresh(isPoll) {
     setTimeout(() => { if (pollRefresh) pollRefresh.classList.remove('spinning'); refreshing = false; }, wait);
   }
 }
+// 강제 새로고침: 캐시(Storage) 삭제 + 잔여 SW 해제 + 전체 리로드. 설치형 PWA는 강력 새로고침이 없어 이걸로 앱 업데이트/캐시 문제 해결
+async function hardReload() {
+  try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) { }
+  try { if ('serviceWorker' in navigator) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } } catch (e) { }
+  location.reload(); // index.html 은 max-age=0, must-revalidate → 리로드 시 최신으로 재검증(?r= 쿼리 안 붙여 standalone 높이 이슈 회피)
+}
+// 탭: 가벼운 데이터 새로고침(상단 스피너만) · 길게 누르기: 강제 새로고침(전체 리로드)
+// 새로고침 버튼: 가벼운 데이터 새로고침만(강제 새로고침은 커피빈 로고 2초 홀드로 이동)
 if (pollRefresh) pollRefresh.onclick = () => doRefresh(false);
+// 커피빈 로고 2초 길게 누르기 → 로고가 스피너처럼 감기다가 강력 새로고침(설치형 PWA 강력새로고침 대안)
+const heroLogo = document.querySelector('h1 .logo-mark');
+if (heroLogo) {
+  let logoTimer = null;
+  const logoStart = () => {
+    if (logoTimer) return;
+    heroLogo.classList.add('charging');
+    logoTimer = setTimeout(() => {
+      logoTimer = null;
+      const r = heroLogo.getBoundingClientRect();
+      const dx = Math.round(window.innerWidth / 2 - (r.left + r.width / 2));
+      const dy = Math.round(window.innerHeight / 2 - (r.top + r.height / 2));
+      busyOverlay.classList.add('show', 'solid', 'no-bean'); // 베이지 로딩 배경(원두는 숨김 — 날아온 로고가 대신)
+      busyOverlay.style.opacity = '0';
+      busyOverlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 560, easing: 'ease-in', fill: 'forwards' }); // 원두 이동에 맞춰 배경 서서히 진해짐
+      heroLogo.classList.remove('charging');
+      heroLogo.style.visibility = 'hidden'; // 원본 숨김 → 복제본이 중앙으로 날아감(SVG transition 이슈 회피 위해 div+WAAPI)
+      const fly = document.createElement('div');
+      fly.style.cssText = `position:fixed; left:${r.left}px; top:${r.top}px; width:${r.width}px; height:${r.height}px; margin:0; z-index:70; color:${getComputedStyle(heroLogo).color}; pointer-events:none;`;
+      const clone = heroLogo.cloneNode(true);
+      clone.removeAttribute('class'); clone.style.cssText = 'width:100%; height:100%; display:block;';
+      fly.appendChild(clone);
+      document.body.appendChild(fly);
+      const beanEl = document.querySelector('.busy-bean');
+      const spinnerPx = beanEl ? parseFloat(beanEl.getAttribute('width')) : 52;
+      const endScale = spinnerPx / r.width; // 도착 크기를 로딩 스피너와 일치 → 미니(28px)는 로고가 커지며 오고, 전체(46px)는 그대로
+      fly.animate([
+        { transform: 'translate(0px,0px) rotate(0deg) scale(1.12)' },
+        { transform: `translate(${dx}px, ${dy}px) rotate(900deg) scale(${endScale})` } // 헤더 → 화면 중앙으로 회전+스피너 크기에 맞춰 이동
+      ], { duration: 640, easing: 'cubic-bezier(.35,.1,.25,1)', fill: 'forwards' });
+      setTimeout(hardReload, 660); // 중앙 도착 후 강력 새로고침(리로드 오버레이 원두 스피너로 연결)
+    }, 2000);
+  };
+  const logoCancel = () => {
+    if (logoTimer) { clearTimeout(logoTimer); logoTimer = null; }
+    heroLogo.classList.remove('charging');
+  };
+  heroLogo.addEventListener('pointerdown', logoStart);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => heroLogo.addEventListener(ev, logoCancel));
+}
 
 // 시간 라벨: 자동 새로고침 주기 모달
 if (pollCycle) pollCycle.onclick = () => {
@@ -552,6 +628,27 @@ function pickAvatar() {
   inp.click();
 }
 
+// 내 차례 복귀 1회성 팝업: 상대가 방금 사서 내 차례가 됐을 때 차례마다 1번만 표시. '알겠어요'로 닫음.
+const TURN_SEEN_KEY = 'wc_turnseen';
+let turnPopupFor = null; // 이번 세션에서 이미 처리(표시/닫음)한 차례 마커
+function maybeShowTurnPopup(s) {
+  if (!s || s.phase !== 'active' || !s.myTurn || !s.last || s.last.mine) return; // 상대가 방금 산 '내 차례 복귀'만
+  const marker = String(s.last.date); // 마지막 구매 시각 = 이 차례의 고유 마커
+  if (turnPopupFor === marker) return; // 이미 이 차례 처리함(중복 표시·진동 방지)
+  let seen = ''; try { seen = localStorage.getItem(TURN_SEEN_KEY) || ''; } catch (_) {}
+  if (seen === marker) { turnPopupFor = marker; return; } // 이전에 닫음
+  turnPopupFor = marker;
+  const ov = $('#turnModal'); if (!ov) return;
+  const mate = (s.mate && s.mate.name) ? s.mate.name : '상대';
+  $('#turnSub').innerHTML = `${esc(mate)}님이 품앗이 했어요<br>이제 당신이 품앗이를 수행할 차례예요`;
+  ov.classList.add('show');
+  try { if (navigator.vibrate) navigator.vibrate([0, 90, 55, 90]); } catch (_) {} // 모바일 짧은 진동(미지원 기기는 무시)
+  $('#turnOk').onclick = () => {
+    ov.classList.remove('show');
+    try { localStorage.setItem(TURN_SEEN_KEY, marker); } catch (_) {}
+  };
+}
+
 // ---------------- 라우팅 ----------------
 async function load(isPoll) {
   let s;
@@ -585,6 +682,7 @@ async function load(isPoll) {
     else if (s.phase === 'active') { renderMain(s); setPoll(true); }
     else { renderSetupHome(s); setPoll(false); }
   }
+  if (s.phase === 'active') maybeShowTurnPopup(s); // 내 차례 복귀 시 1회성 팝업(미니·전체 공통)
 }
 
 // 1) 첫 화면: 만들기 / 참여
@@ -790,6 +888,8 @@ function syncMiniHeight() {
 // 항상-위(핀): 미니 모드에서만 유효, 전체화면이면 무조건 off. 앱(WebView2)에서만 노출.
 const isApp = !!(window.chrome && window.chrome.webview);
 if (isApp) document.documentElement.classList.add('is-app');
+// 모바일 확대/축소 차단 — iOS는 user-scalable 무시하므로 핀치(gesture)를 JS로 막음(더블탭은 touch-action:manipulation이 처리)
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
 const PIN_KEY = 'wc_pin';
 let pinOn = (() => { try { return localStorage.getItem(PIN_KEY) === '1'; } catch (e) { return false; } })();
 let nativePinSent = null;
