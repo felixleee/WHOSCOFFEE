@@ -163,9 +163,9 @@
   .recent { margin-top: 26px; }
   .recent h2 { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
   .rec-list { overflow-y: auto; max-height: 117px; }   /* 최대 3개만 보이고 나머진 스크롤 (타이틀은 고정) */
-  .rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px dashed var(--line); font-size: .92rem; }
+  .rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px 10px 9px; border-bottom: 1px dashed var(--line); border-left: 3px solid transparent; font-size: .92rem; } /* 투명 바로 모든 행 정렬 통일(내 행만 색) */
   .rec-item:last-child { border-bottom: none; }
-  .rec-item.mine { border-left: 3px solid var(--brand); padding-left: 9px; border-radius: 0; } /* 내 기록: 왼쪽 강조 바 */
+  .rec-item.mine { border-left-color: var(--brand); } /* 내 기록: 왼쪽 바에 색(정렬은 기본 투명 바로 통일) */
   .rec-item.mine .rec-name { color: var(--brand); }
   .rec-who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
   .rec-chip { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 800; overflow: hidden; flex: 0 0 auto; }
