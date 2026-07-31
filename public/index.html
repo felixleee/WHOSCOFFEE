@@ -67,7 +67,8 @@
     font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
   .theme-toggle:hover { border-color: var(--brand-soft); }
   .topleft { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); z-index: 40; display: flex; align-items: center; gap: 8px; }
-  .poll-stamp { color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap; }
+  .poll-stamp { color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 5px 10px; box-shadow: var(--shadow); }
   .poll-toggle { display: flex; align-items: center; height: 38px; border-radius: 19px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
   .poll-toggle button { border: none; background: none; color: var(--ink); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; height: 100%; }
   .poll-refresh { padding: 0 8px 0 11px; }
@@ -152,7 +153,7 @@
   .vcol.cur .vst { color: var(--ink); font-weight: 800; }
   .vcol.dim .vst { color: var(--muted); }
   .vs { font-size: 12px; font-weight: 800; color: var(--brand-soft); letter-spacing: 1px; }
-  .foot-switch { margin-top: auto; padding: 18px 0 4px; text-align: center; }
+  .foot-switch { margin-top: auto; padding: 34px 0 6px; text-align: center; }
   .foot-switch button { background: none; border: none; color: var(--muted); font-size: .82rem; cursor: pointer; text-decoration: underline; }
 
   .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: .85rem; }
@@ -277,7 +278,7 @@
   body.mini-mode .poll-toggle { height: auto; border: none; background: none; box-shadow: none; border-radius: 0; }
   body.mini-mode .poll-cycle { display: none; }
   body.mini-mode .poll-refresh { padding: 2px; }
-  body.mini-mode .poll-stamp { font-size: .6rem; }
+  body.mini-mode .poll-stamp { font-size: .6rem; background: none; border: none; box-shadow: none; padding: 0; }
 
   .stamp-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 50; pointer-events: none; background: rgba(255,255,255,0); transition: background .25s ease; }
   .stamp-overlay.show { display: flex; background: rgba(255,255,255,.82); }
