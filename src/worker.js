@@ -32,6 +32,7 @@ async function handleApi(request, env, execCtx, p) {
   const m = request.method;
 
   if (p === '/api/state' && m === 'GET') return json(await getState(DB, token));
+  if (p === '/api/history' && m === 'GET') return json(await getHistory(DB, token)); // 달력 뷰용 전체 기록
 
   if (p === '/api/create' && m === 'POST') {
     const { name } = await request.json();
@@ -314,6 +315,20 @@ async function requestUndo(DB, roomId, eventId, byKey) {
 }
 async function clearUndoRequest(DB, roomId) {
   await DB.prepare('DELETE FROM undo_requests WHERE room_id = ?').bind(roomId).run();
+}
+
+// ---- 전체 기록(달력 뷰) ----
+async function getHistory(DB, token) {
+  const ctx = await meAndRoom(DB, token);
+  if (!ctx) return { events: [] };
+  const { room, key } = ctx;
+  const rows = (await DB.prepare('SELECT date, user_key, note FROM events WHERE room_id = ? ORDER BY id').bind(room.id).all()).results;
+  return {
+    events: rows.map(e => {
+      const mb = memberByKey(room, e.user_key);
+      return { date: e.date, name: mb ? mb.name : '?', avatar: mb ? (mb.avatar || null) : null, isMe: e.user_key === key, note: e.note };
+    })
+  };
 }
 
 // ---- 상태 ----
