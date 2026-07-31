@@ -53,6 +53,8 @@ async function handleApi(request, env, execCtx, p) {
     const { room, key } = ctx;
     const nextKey = currentTurnKey(room, await lastEvent(DB, room.id));
     if (key !== nextKey) throw new Error(`지금은 ${keyName(room, nextKey)}님 차례예요.`);
+    // 상대의 취소 요청이 대기 중이면 먼저 승인/거절해야 함(수행이 요청을 조용히 무시하는 것 방지)
+    if (await getUndoRequest(DB, room.id)) throw new Error('상대의 취소 요청을 먼저 처리해주세요.');
     const { note } = await request.json();
     await recordBuy(DB, room.id, key, note);
     await clearUndoRequest(DB, room.id); // 새 도장 → 이전 취소 요청은 무효

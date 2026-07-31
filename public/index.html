@@ -825,6 +825,7 @@ function renderMain(s, offline) {
     </div>`;
   const versus = `<div class="versus3">${meCol}<div class="vs" title="번갈아 사는 품앗이">⇄</div>${mateCol}</div>`;
 
+  const pendingOtherUndo = !offline && s.undoReq && !s.undoReq.byMe; // 상대가 취소 요청 → 먼저 응답해야 함
   let center;
   if (myTurn) {
     center = `<div class="bubble">
@@ -834,7 +835,9 @@ function renderMain(s, offline) {
       </div>
       ${offline
         ? `<div class="waitbox">⚠ 서버가 꺼져 있어 지금은 도장을 찍을 수 없어요.<br>서버가 켜지면 찍을 수 있어요.</div>`
-        : `<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
+        : pendingOtherUndo
+          ? `<div class="waitbox">🔁 상대의 취소 요청을 먼저 처리해주세요.<br>아래에서 <b>승인</b> 또는 <b>거절</b>하면 품앗이를 이어갈 수 있어요.</div>`
+          : `<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
   } else {
     center = `<div class="bubble">
         ${cup}
@@ -1004,7 +1007,8 @@ function renderMini(s, offline) {
   if (s.phase !== 'active') return `<div class="mwait">품앗이 종료됨</div>`;
   const myTurn = s.myTurn, me = s.me, mate = s.mate;
   const vs = `<div class="mvs">${miniCol(me, myTurn)}<span class="mswap">⇄</span>${miniCol(mate, !myTurn)}</div>`;
-  const btn = myTurn
+  const pendingOtherUndo = !offline && s.undoReq && !s.undoReq.byMe; // 상대 취소 요청 대기 → 수행 잠금
+  const btn = (myTurn && !pendingOtherUndo)
     ? (offline ? `<div class="mwait">서버 꺼짐 · 도장 불가</div>` : `<button id="mbuy" class="mbuy">☕ 품앗이 수행</button>`)
     : '';
   let mundo = '';
