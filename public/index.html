@@ -66,6 +66,11 @@
     border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink);
     font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
   .theme-toggle:hover { border-color: var(--brand-soft); }
+  /* 상단 스크림: 스크롤 시 컨트롤 뒤 콘텐츠를 배경색으로 부드럽게 페이드(디자인 마감) */
+  .top-scrim { position: fixed; top: 0; left: 0; right: 0; height: calc(96px + env(safe-area-inset-top)); z-index: 35; pointer-events: none;
+    background: linear-gradient(to bottom, var(--bg) 0%, var(--bg) 48%, transparent 100%); opacity: 0; transition: opacity .25s ease; }
+  body.scrolled .top-scrim { opacity: 1; }
+  body.mini-mode .top-scrim { display: none; } /* 미니 위젯엔 불필요 */
   .topleft { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); z-index: 40; display: flex; align-items: center; gap: 8px; }
   .poll-stamp { color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap;
     background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 5px 10px; box-shadow: var(--shadow); }
@@ -336,6 +341,7 @@
 </style>
 </head>
 <body>
+<div class="top-scrim" aria-hidden="true"></div>
 <button class="theme-toggle" id="themeToggle" aria-label="다크/라이트 테마 전환"></button>
 <button class="pin-toggle" id="pinToggle" aria-label="항상 위 고정" title="항상 위 고정">
   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6z"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
@@ -676,6 +682,10 @@ updatePollLabel();
 const topleft = document.querySelector('.topleft');
 const showTop = on => { if (topleft) topleft.style.display = on ? 'flex' : 'none'; };
 showTop(false); // 첫 상태 로드 전까진 숨김(방 입장 확인되면 노출)
+// 스크롤 시 상단 스크림 페이드인 (브라우저=window, 데스크톱 앱=html 스크롤 모두 window scroll 발생)
+const onScrollScrim = () => document.body.classList.toggle('scrolled', (window.scrollY || document.documentElement.scrollTop || 0) > 8);
+window.addEventListener('scroll', onScrollScrim, { passive: true });
+onScrollScrim();
 
 // 마지막으로 데이터를 성공적으로 불러온 시각 (상대시간 표시)
 const pollStamp = $('#pollStamp');
