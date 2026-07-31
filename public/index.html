@@ -162,7 +162,7 @@
 
   .recent { margin-top: 26px; }
   .recent h2 { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
-  .rec-list { overflow-y: auto; max-height: 117px; }   /* 최대 3개만 보이고 나머진 스크롤 (타이틀은 고정) */
+  .rec-list { }   /* 내부 스크롤 없음 — 바디 스크롤로 대체(리스트는 최근 5개만) */
   .rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px 10px 9px; border-bottom: 1px dashed var(--line); border-left: 3px solid transparent; font-size: .92rem; } /* 투명 바로 모든 행 정렬 통일(내 행만 색) */
   .rec-item:last-child { border-bottom: none; }
   .rec-item.mine { border-left-color: var(--brand); } /* 내 기록: 왼쪽 바에 색(정렬은 기본 투명 바로 통일) */
@@ -964,7 +964,7 @@ function renderMain(s, offline) {
 
   let recent = '';
   const listHTML = (s.recent && s.recent.length)
-    ? `<div class="rec-list">` + s.recent.map(e => `
+    ? `<div class="rec-list">` + s.recent.slice(0, 5).map(e => `
       <div class="rec-item${e.isMe ? ' mine' : ''}"><span class="rec-date">${fmtDate(e.date)}</span>
         <span class="rec-who">${recChip(e)}<span class="rec-name">${esc(e.name)}</span></span>
         ${e.note ? `<span class="rec-note">${esc(e.note)}</span>` : ''}<span class="rec-badge">완료</span></div>`).join('') + `</div>`
