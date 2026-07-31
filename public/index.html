@@ -165,6 +165,8 @@
   .rec-list { overflow-y: auto; max-height: 117px; }   /* 최대 3개만 보이고 나머진 스크롤 (타이틀은 고정) */
   .rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px dashed var(--line); font-size: .92rem; }
   .rec-item:last-child { border-bottom: none; }
+  .rec-item.mine { background: rgba(140,110,70,.12); border-radius: 8px; border-bottom-color: transparent; } /* 내 기록 강조(‘(나)’ 텍스트 대신) */
+  .rec-item.mine .rec-name { color: var(--brand); }
   .rec-date { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; }
   .rec-name { font-weight: 700; }
   .rec-badge { margin-left: auto; font-size: .7rem; font-weight: 800; color: var(--stamp); border: 1.5px solid var(--stamp); border-radius: 6px; padding: 1px 7px; transform: rotate(-6deg); opacity: .85; letter-spacing: 1px; }
@@ -213,9 +215,10 @@
   .undo-acts button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; }
   /* 전체화면: 창 자체는 스크롤 방지. 기록은 rec-list 가 최대 3개만 보이고 내부 스크롤(타이틀 고정) */
   /* 창 높이(viewer.cs normalSize)를 콘텐츠에 맞게 키워 여유롭게 3개가 들어가도록 함 — 섹션 간격은 원래대로 유지 */
-  html.is-app body:not(.mini-mode) { overflow: hidden; } /* 창 스크롤 방지는 데스크톱 앱(고정 창)에서만 — 모바일 브라우저는 정상 스크롤 */
-  html.is-app, html.is-app body { overflow: hidden; }   /* 앱 창은 항상 콘텐츠에 맞음 → 루트/바디 x·y 스크롤바 방지(미니 리사이즈 순간 번쩍임 제거) */
-  html.is-app, html.is-app body { scrollbar-width: none; }
+  html.is-app { overflow-x: hidden; overflow-y: auto; }  /* 콘텐츠가 창보다 커지면 세로 스크롤(스크롤바는 아래에서 숨김) */
+  html.is-app body:not(.mini-mode) { overflow-x: hidden; overflow-y: visible; } /* 본문은 콘텐츠만큼 늘고, 스크롤은 루트가 담당 */
+  html.is-app body.mini-mode { overflow: hidden; }       /* 미니는 콘텐츠에 딱 맞춤(스크롤 없음) */
+  html.is-app, html.is-app body { scrollbar-width: none; } /* 스크롤바만 숨김(리사이즈 순간 번쩍임 방지) */
   html.is-app::-webkit-scrollbar, html.is-app body::-webkit-scrollbar { display: none; }
   /* 설치형 PWA(홈 화면 추가·standalone)에서만 당겨서 새로고침/바운스 비활성 — 네이티브 앱처럼, 제스처발 높이 재계산 튐 방지. 일반 모바일 브라우저는 그대로 */
   @media (display-mode: standalone) { html, body { overscroll-behavior: none; } }
@@ -951,8 +954,8 @@ function renderMain(s, offline) {
   let recent = '';
   const listHTML = (s.recent && s.recent.length)
     ? `<div class="rec-list">` + s.recent.map(e => `
-      <div class="rec-item"><span class="rec-date">${fmtDate(e.date)}</span>
-        <span class="rec-name">${esc(e.name)}${e.isMe ? ' (나)' : ''}</span>
+      <div class="rec-item${e.isMe ? ' mine' : ''}"><span class="rec-date">${fmtDate(e.date)}</span>
+        <span class="rec-name">${esc(e.name)}</span>
         ${e.note ? `<span class="rec-note">${esc(e.note)}</span>` : ''}<span class="rec-badge">완료</span></div>`).join('') + `</div>`
     : '';
   if (offline) {
