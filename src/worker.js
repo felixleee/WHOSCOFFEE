@@ -10,7 +10,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
       try {
-        return await handleApi(request, env, ctx, url.pathname);
+        return await handleApi(request, env, ctx, url.pathname); // ctx = ExecutionContext(waitUntil용)
       } catch (e) {
         return json({ error: e.message || '알 수 없는 오류' }, 400);
       }
@@ -26,7 +26,7 @@ function json(obj, code = 200) {
   });
 }
 
-async function handleApi(request, env, ctx, p) {
+async function handleApi(request, env, execCtx, p) {
   const DB = env.DB;
   const token = request.headers.get('X-Token');
   const m = request.method;
@@ -56,7 +56,7 @@ async function handleApi(request, env, ctx, p) {
     const { note } = await request.json();
     await recordBuy(DB, room.id, key, note);
     await clearUndoRequest(DB, room.id); // 새 도장 → 이전 취소 요청은 무효
-    ctx.waitUntil(notifyTurn(env, DB, room, key)); // 상대에게 "내 차례" 푸시(응답 지연 없이 백그라운드)
+    execCtx.waitUntil(notifyTurn(env, DB, room, key)); // 상대에게 "내 차례" 푸시(응답 지연 없이 백그라운드)
     return json({ ok: true });
   }
   if (p === '/api/undo' && m === 'POST') {
