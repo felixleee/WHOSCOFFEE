@@ -970,7 +970,7 @@ function renderMain(s, offline) {
         ${e.note ? `<span class="rec-note">${esc(e.note)}</span>` : ''}<span class="rec-badge">완료</span></div>`).join('') + `</div>`
     : '';
   if (offline) {
-    if (listHTML) recent = `<div class="recent"><h2>최근 10개 품앗이 기록</h2>${listHTML}</div>`; // 오프라인은 리스트만
+    if (listHTML) recent = `<div class="recent"><h2>최근 10건 품앗이 기록</h2>${listHTML}</div>`; // 오프라인은 리스트만
   } else if (s.recent && s.recent.length) {
     if (recView === 'calendar' && !histCache) ensureHistory(); // 첫 진입 시 전체기록 로드
     const icoList = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h11M8 12h11M8 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>';
@@ -979,7 +979,7 @@ function renderMain(s, offline) {
         <button id="recTabList" class="${recView === 'list' ? 'on' : ''}">${icoList}리스트</button>
         <button id="recTabCal" class="${recView === 'calendar' ? 'on' : ''}">${icoCal}달력</button></div>`;
     const body = recView === 'calendar' ? calendarHTML() : listHTML;
-    const recTitle = recView === 'calendar' ? '전체 품앗이 기록' : '최근 10개 품앗이 기록';
+    const recTitle = recView === 'calendar' ? '전체 품앗이 기록' : '최근 10건 품앗이 기록';
     recent = `<div class="recent"><div class="rec-head"><h2>${recTitle}</h2>${tabs}</div>${body}</div>`;
   }
 
