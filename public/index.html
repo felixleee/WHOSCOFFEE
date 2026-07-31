@@ -196,8 +196,10 @@
   .cal-sum { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 13px; font-size: .82rem; color: var(--ink); }
   .cal-sum .s { display: inline-flex; align-items: center; gap: 6px; }
   .cal-sum b { font-weight: 800; }
-  .cal-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .cal-dot { width: 15px; height: 15px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
   .cal-dot.me { background: var(--brand); } .cal-dot.you { background: var(--brand-soft); }
+  .cal-dot.img { overflow: hidden; background: var(--line); }
+  .cal-dot.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cal-loading { text-align: center; color: var(--muted); padding: 34px 0; font-size: .85rem; }
   .undo-row, .minor-row { text-align: center; margin-top: 14px; }
   .undo-row button, .minor-row button { background: none; border: none; color: var(--muted); font-size: .82rem; cursor: pointer; text-decoration: underline; }
@@ -506,15 +508,18 @@ function calendarHTML() {
     cells += `<div class="cal-cell ${evs ? 'has' : ''}"><span class="cal-dnum ${dow === 0 ? 'sun' : ''}">${d}</span><span class="cal-marks">${marks}</span></div>`;
   }
   const wd = ['일', '월', '화', '수', '목', '금', '토'].map((w, i) => `<span class="${i === 0 ? 'sun' : ''}">${w}</span>`).join('');
-  const meName = esc((lastState && lastState.me && lastState.me.name) || '나');
-  const youName = esc((lastState && lastState.mate && lastState.mate.name) || '상대');
+  const meM = lastState && lastState.me || {}, youM = lastState && lastState.mate || {};
+  const meName = esc(meM.name || '나'), youName = esc(youM.name || '상대');
+  const sumMark = (cls, avatar) => avatar
+    ? `<span class="cal-dot ${cls} img"><img src="${avatar}" alt="" /></span>`
+    : `<span class="cal-dot ${cls}"></span>`;
   return `<div class="cal-nav"><button id="calPrev" aria-label="이전 달">‹</button>
       <span class="cal-title">${y}년 ${m + 1}월</span>
       <button id="calNext" aria-label="다음 달">›</button></div>
     <div class="cal-wd">${wd}</div>
     <div class="cal-grid">${cells}</div>
-    <div class="cal-sum"><span class="s"><span class="cal-dot me"></span>${meName} <b>${cMe}</b></span>
-      <span class="s"><span class="cal-dot you"></span>${youName} <b>${cYou}</b></span></div>`;
+    <div class="cal-sum"><span class="s">${sumMark('me', meM.avatar)}${meName} <b>${cMe}</b></span>
+      <span class="s">${sumMark('you', youM.avatar)}${youName} <b>${cYou}</b></span></div>`;
 }
 
 let pollTimer = null;
