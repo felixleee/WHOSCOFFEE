@@ -959,9 +959,11 @@ function renderMain(s, offline) {
     if (listHTML) recent = `<div class="recent"><h2>품앗이 기록</h2>${listHTML}</div>`; // 오프라인은 리스트만
   } else if (s.recent && s.recent.length) {
     if (recView === 'calendar' && !histCache) ensureHistory(); // 첫 진입 시 전체기록 로드
+    const icoList = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h11M8 12h11M8 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>';
+    const icoCal = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
     const tabs = `<div class="rec-tabs">
-        <button id="recTabList" class="${recView === 'list' ? 'on' : ''}"><span aria-hidden="true">☰</span> 리스트</button>
-        <button id="recTabCal" class="${recView === 'calendar' ? 'on' : ''}"><span aria-hidden="true">▦</span> 달력</button></div>`;
+        <button id="recTabList" class="${recView === 'list' ? 'on' : ''}">${icoList}리스트</button>
+        <button id="recTabCal" class="${recView === 'calendar' ? 'on' : ''}">${icoCal}달력</button></div>`;
     const body = recView === 'calendar' ? calendarHTML() : listHTML;
     recent = `<div class="recent"><div class="rec-head"><h2>품앗이 기록</h2>${tabs}</div>${body}</div>`;
   }
