@@ -262,7 +262,8 @@
   .stamp-overlay.fade .stamp-mark { transition: opacity .3s; opacity: 0; }
 
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg);
-    padding: 12px 20px; border-radius: 30px; font-size: .9rem; opacity: 0; transition: all .25s; pointer-events: none; z-index: 60; }
+    padding: 12px 20px; border-radius: 20px; font-size: .9rem; opacity: 0; transition: all .25s; pointer-events: none; z-index: 60;
+    white-space: pre-line; text-align: center; line-height: 1.45; max-width: 84vw; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .modal { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.4); padding: 20px; }
   .modal.show { display: flex; }
@@ -858,7 +859,7 @@ function renderMain(s, offline) {
   let undoBanner = '';
   if (!offline && s.undoReq) {
     undoBanner = s.undoReq.byMe
-      ? `<div class="undo-banner wait">⏳ 마지막 기록 취소를 요청했어요. 상대 승인을 기다리는 중…
+      ? `<div class="undo-banner wait">⏳ 마지막 기록 취소를 요청했어요.<br>상대 승인을 기다리는 중…
            <div class="undo-acts"><button id="undoCancel" class="ghost">요청 철회</button></div></div>`
       : `<div class="undo-banner">🔁 <b>${esc(s.undoReq.byName)}</b>님이 마지막 기록 취소를 요청했어요.
            <div class="undo-acts"><button id="undoApprove">승인</button><button id="undoReject" class="ghost">거절</button></div></div>`;
@@ -884,7 +885,7 @@ function renderMain(s, offline) {
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#undo')) $('#undo').onclick = async () => {
-    try { await jsonPost('/api/undo', {}); toast('취소 요청을 보냈어요 · 상대 승인 대기'); load(); } catch (e) { toast(e.message); }
+    try { await jsonPost('/api/undo', {}); toast('취소 요청을 보냈어요\n상대 승인을 기다릴게요'); load(); } catch (e) { toast(e.message); }
   };
   if ($('#undoCancel')) $('#undoCancel').onclick = async () => {
     try { await jsonPost('/api/undo-cancel', {}); toast('요청을 철회했어요'); load(); } catch (e) { toast(e.message); }
