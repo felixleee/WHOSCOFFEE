@@ -477,8 +477,7 @@ let recView = (() => { try { return localStorage.getItem('wc_recview') || 'list'
 let histCache = null;   // 전체 기록 캐시 [{date,name,avatar,isMe,note}]
 let calYM = null;       // 보고 있는 달 {y, m(0-11)}
 let lastOffline = false; // 뷰 토글 시 재렌더용 (lastState는 아래에서 선언)
-function defaultMonth() {
-  if (histCache && histCache.length) { const p = histCache[histCache.length - 1].date.split('-'); return { y: +p[0], m: +p[1] - 1 }; }
+function defaultMonth() { // 항상 이번 달 기준(KST=브라우저 로컬)
   const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() };
 }
 async function ensureHistory() {
@@ -1024,7 +1023,7 @@ function renderMain(s, offline) {
 
   if ($('#buy')) $('#buy').onclick = async () => {
     busy = true;
-    try { await jsonPost('/api/buy', {}, { noBusy: true }); histCache = null; playStamp(null, () => { busy = false; load(); }); }
+    try { await jsonPost('/api/buy', {}, { noBusy: true }); histCache = null; calYM = null; playStamp(null, () => { busy = false; load(); }); }
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#undo')) $('#undo').onclick = async () => {
@@ -1172,7 +1171,7 @@ function renderMiniMode(s, offline) {
   setFoot('');
   if ($('#mbuy')) $('#mbuy').onclick = async () => {
     busy = true;
-    try { await jsonPost('/api/buy', {}, { noBusy: true }); histCache = null; playStamp(null, () => { busy = false; load(); }); }
+    try { await jsonPost('/api/buy', {}, { noBusy: true }); histCache = null; calYM = null; playStamp(null, () => { busy = false; load(); }); }
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#miniExit')) $('#miniExit').onclick = () => setMini(false);
