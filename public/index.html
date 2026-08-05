@@ -833,6 +833,9 @@ async function load(isPoll) {
     return;
   }
   markFetched(); // 성공적으로 데이터를 받아온 시각 기록
+  // 폴링/로드로 마지막 기록이 바뀌면(상대가 사거나 취소 승인 등) 달력 캐시 무효화 → 상대 기록도 달력에 반영
+  const evSig = st => st && st.last ? `${st.last.date}|${st.last.name}|${st.last.mine}` : '';
+  if (evSig(s) !== evSig(lastState)) histCache = null;
   lastState = s;
   // 온라인 정상: active 상태를 캐시에 저장(오프라인 시 보여줄 마지막 상태)
   if (s.phase === 'active') { try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (_) { } }
