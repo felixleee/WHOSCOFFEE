@@ -709,7 +709,7 @@ $('#notifModal').querySelectorAll('.notif-opt').forEach(b => b.onclick = async (
   if (next && !(await ensureSubscribed())) { updateNotifHint(); return; } // 권한 거부 시 토글 취소
   p[key] = next; b.classList.toggle('on', next);
   setNotifPrefs(p);
-  await syncNotifPrefs(p);
+  await syncNotifPrefs(p, next); // 방금 켰으면(next=true) 확인 알림 발송
   updateNotifHint(); refreshNotifBtn();
 });
 $('#notifCancel').onclick = () => $('#notifModal').classList.remove('show');
@@ -839,19 +839,20 @@ async function ensureSubscribed() {
       if (perm !== 'granted') { toast('알림 권한이 필요해요.'); return false; }
       const reg = await navigator.serviceWorker.ready;
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(VAPID_PUBLIC) });
-      await jsonPost('/api/subscribe', { subscription: sub.toJSON() });
+      await jsonPost('/api/subscribe', { subscription: sub.toJSON() }, { noBusy: true });
     }
     return true;
   } catch (e) { toast('알림을 켜지 못했어요. 홈 화면에 설치한 뒤 다시 시도해주세요.'); return false; }
 }
 // 취향을 서버에 반영. 둘 다 끄면 구독 자체 해제.
-async function syncNotifPrefs(p) {
+async function syncNotifPrefs(p, announce) {
   const sub = await currentSub();
   if (!p.turn && !p.daily) {
-    if (sub) { try { await jsonPost('/api/unsubscribe', { endpoint: sub.endpoint }); } catch (_) { } try { await sub.unsubscribe(); } catch (_) { } }
+    if (sub) { try { await jsonPost('/api/unsubscribe', { endpoint: sub.endpoint }, { noBusy: true }); } catch (_) { } try { await sub.unsubscribe(); } catch (_) { } }
     return;
   }
-  if (sub) { try { await jsonPost('/api/notif-prefs', { endpoint: sub.endpoint, turn: p.turn, daily: p.daily }); } catch (_) { } }
+  // announce=true(방금 켠 경우) → 서버가 확인 알림 발송("이제부터 ~ 알려드릴게요")
+  if (sub) { try { await jsonPost('/api/notif-prefs', { endpoint: sub.endpoint, turn: p.turn, daily: p.daily, announce: !!announce }, { noBusy: true }); } catch (_) { } }
 }
 function updateNotifHint() {
   const h = $('#notifHint'); if (!h) return;

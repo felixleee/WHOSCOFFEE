@@ -126,10 +126,15 @@ async function handleApi(request, env, execCtx, p) {
     // 기기별 알림 취향 저장(내 차례 / 매일 정오). 내 구독만 수정 가능.
     const ctx = await meAndRoom(DB, token);
     if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
-    const { endpoint, turn, daily } = await request.json();
+    const { endpoint, turn, daily, announce } = await request.json();
     if (!endpoint) return json({ error: '구독 정보가 없어요.' }, 400);
     await DB.prepare('UPDATE push_subs SET pref_turn = ?, pref_daily = ? WHERE endpoint = ? AND user_key = ?')
       .bind(turn ? 1 : 0, daily ? 1 : 0, endpoint, ctx.key).run();
+    // 방금 켠 경우: "이제부터 ~ 알려드릴게요" 확인 알림(발송 파이프라인 확인 겸)
+    if (announce && (turn || daily) && env.VAPID_JWK) {
+      const s = await DB.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE endpoint = ? AND user_key = ?').bind(endpoint, ctx.key).first();
+      if (s) execCtx.waitUntil((async () => { try { await sendPush(env, s, welcomePayload(!!turn, !!daily)); } catch (e) { } })());
+    }
     return json({ ok: true });
   }
   return json({ error: '없는 API입니다.' }, 404);
@@ -316,6 +321,14 @@ async function notifyTurn(env, DB, room, buyerKey) {
       } catch (e) { /* 개별 발송 실패는 무시 */ }
     }
   } catch (e) { /* 전체 실패해도 buy 응답에는 영향 없음 */ }
+}
+// 알림 켠 직후 확인 알림 — 켠 종류를 문장으로
+function welcomePayload(turn, daily) {
+  const parts = [];
+  if (turn) parts.push('상대가 품앗이하면');
+  if (daily) parts.push('매일 정오에 오늘 차례를');
+  const body = `이제부터 ${parts.join(', ')} 알려드릴게요 ☕`;
+  return { title: '🔔 알림을 켰어요', body, tag: 'wc-welcome', url: '/' };
 }
 // 매일 정오 cron: pref_daily 켠 기기들에게 "오늘은 누가 살 차례" 발송. 대기중(2명 미만) 방은 스킵.
 async function sendDailyTurn(env) {
