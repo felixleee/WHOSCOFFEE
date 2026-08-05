@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS push_subs (
   room_id    TEXT NOT NULL,
   p256dh     TEXT NOT NULL,
   auth       TEXT NOT NULL,
+  pref_turn  INTEGER NOT NULL DEFAULT 1,  -- 내 차례 알림(상대가 품앗이하면)
+  pref_daily INTEGER NOT NULL DEFAULT 1,  -- 매일 정오 "오늘 누가 살 차례" 알림
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_key);

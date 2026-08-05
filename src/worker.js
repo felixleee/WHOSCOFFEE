@@ -17,6 +17,10 @@ export default {
     }
     return env.ASSETS.fetch(request);
   },
+  // 예약 발송: KST 정오(UTC 03:00) — 각 방에 "오늘은 누가 살 차례" 알림(pref_daily 켠 기기만)
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendDailyTurn(env));
+  },
 };
 
 function json(obj, code = 200) {
@@ -116,6 +120,16 @@ async function handleApi(request, env, execCtx, p) {
   if (p === '/api/unsubscribe' && m === 'POST') {
     const { endpoint } = await request.json();
     if (endpoint) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(endpoint).run();
+    return json({ ok: true });
+  }
+  if (p === '/api/notif-prefs' && m === 'POST') {
+    // 기기별 알림 취향 저장(내 차례 / 매일 정오). 내 구독만 수정 가능.
+    const ctx = await meAndRoom(DB, token);
+    if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
+    const { endpoint, turn, daily } = await request.json();
+    if (!endpoint) return json({ error: '구독 정보가 없어요.' }, 400);
+    await DB.prepare('UPDATE push_subs SET pref_turn = ?, pref_daily = ? WHERE endpoint = ? AND user_key = ?')
+      .bind(turn ? 1 : 0, daily ? 1 : 0, endpoint, ctx.key).run();
     return json({ ok: true });
   }
   return json({ error: '없는 API입니다.' }, 404);
@@ -293,8 +307,8 @@ async function notifyTurn(env, DB, room, buyerKey) {
     const targetKey = room.creator.key === buyerKey ? (room.joiner && room.joiner.key) : room.creator.key;
     if (!targetKey) return;
     const buyerName = keyName(room, buyerKey);
-    const subs = (await DB.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE user_key = ?').bind(targetKey).all()).results || [];
-    const payload = { title: '☕ 내 차례가 돌아왔어요!', body: `${buyerName}님이 품앗이 했어요 · 이제 당신이 품앗이를 수행할 차례예요`, url: '/' };
+    const subs = (await DB.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE user_key = ? AND pref_turn = 1').bind(targetKey).all()).results || [];
+    const payload = { title: '☕ 내 차례가 돌아왔어요!', body: `${buyerName}님이 품앗이 했어요 · 이제 당신이 품앗이를 수행할 차례예요`, tag: 'wc-turn', url: '/' };
     for (const s of subs) {
       try {
         const status = await sendPush(env, s, payload);
@@ -302,6 +316,30 @@ async function notifyTurn(env, DB, room, buyerKey) {
       } catch (e) { /* 개별 발송 실패는 무시 */ }
     }
   } catch (e) { /* 전체 실패해도 buy 응답에는 영향 없음 */ }
+}
+// 매일 정오 cron: pref_daily 켠 기기들에게 "오늘은 누가 살 차례" 발송. 대기중(2명 미만) 방은 스킵.
+async function sendDailyTurn(env) {
+  const DB = env.DB;
+  if (!env.VAPID_JWK) return;
+  const subs = (await DB.prepare('SELECT endpoint, user_key, room_id, p256dh, auth FROM push_subs WHERE pref_daily = 1').all()).results || [];
+  const cache = {}; // room_id → { room, turnKey }
+  for (const s of subs) {
+    if (!(s.room_id in cache)) {
+      const room = await getRoomById(DB, s.room_id);
+      const turnKey = (room && room.creator && room.joiner) ? currentTurnKey(room, await lastEvent(DB, room.id)) : null;
+      cache[s.room_id] = { room, turnKey };
+    }
+    const { room, turnKey } = cache[s.room_id];
+    if (!room || !turnKey) continue; // 방 없음/대기중 스킵
+    const isMe = s.user_key === turnKey;
+    const payload = isMe
+      ? { title: '☕ 오늘은 당신 차례!', body: '오늘 커피는 당신이 살 차례예요', tag: 'wc-daily', url: '/' }
+      : { title: '☕ 오늘의 품앗이', body: `오늘 커피는 ${keyName(room, turnKey)}님이 살 차례예요`, tag: 'wc-daily', url: '/' };
+    try {
+      const status = await sendPush(env, s, payload);
+      if (status === 404 || status === 410) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(s.endpoint).run();
+    } catch (e) { /* 개별 실패는 무시 */ }
+  }
 }
 // ---- 취소 요청(undo_requests): 방마다 최대 1건, 상대 승인 시 실제 삭제 ----
 async function getUndoRequest(DB, roomId) {

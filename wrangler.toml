@@ -19,3 +19,7 @@ not_found_handling = "single-page-application"
 [vars]
 VAPID_PUBLIC = "BGxDtl10Cs5Gp3nt8kj6_-rny5fswUUldIMxOzDt7T5bCSeFERKxtXa_Bks2GDoF-XZKHGV61rf1FEP3HWW_Kac"
 VAPID_SUBJECT = "mailto:106325@ctr.co.kr"
+
+# 예약 발송: KST 정오(UTC 03:00) — "오늘은 누가 살 차례" 알림
+[triggers]
+crons = ["0 3 * * *"]

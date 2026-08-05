@@ -88,6 +88,16 @@
   .poll-opts button { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; line-height: 1.2; }
   .poll-opts button small { font-weight: 400; opacity: .6; font-size: .62rem; margin-top: 1px; }
   .poll-opts button.sel { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+  /* 알림 설정 모달: 토글 행 2개 */
+  .notif-opts { display: flex; flex-direction: column; gap: 8px; }
+  .notif-opt { display: flex; align-items: center; gap: 10px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; cursor: pointer; }
+  .notif-opt .no-txt { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .notif-opt .no-main { font-weight: 700; font-size: .9rem; }
+  .notif-opt .no-sub { font-size: .68rem; color: var(--muted); font-weight: 400; }
+  .notif-opt .no-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; color: transparent; font-size: .8rem; font-weight: 800; flex: 0 0 auto; }
+  .notif-opt.on { border-color: var(--brand); background: rgba(140, 110, 70, .08); }
+  .notif-opt.on .no-check { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+  .notif-hint { font-size: .68rem; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.5; min-height: 1em; }
   .offline-bar { background: rgba(120,120,120,.12); color: var(--muted); border: 1px dashed var(--line);
     border-radius: 10px; padding: 8px 12px; font-size: .8rem; text-align: center; margin-bottom: 12px; line-height: 1.4; }
   .btn-wide { width: 100%; border-radius: 12px; padding: 14px; font-weight: 700; border: none; }
@@ -419,6 +429,23 @@
     <div class="modal-row"><button class="m-btn m-cancel" id="pollCancel">닫기</button></div>
   </div>
 </div>
+<div id="notifModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-t">알림 설정</div>
+    <div class="notif-opts">
+      <button class="notif-opt" data-nk="turn">
+        <span class="no-txt"><span class="no-main">내 차례 알림</span><span class="no-sub">상대가 품앗이하면 알려줘요</span></span>
+        <span class="no-check">✓</span>
+      </button>
+      <button class="notif-opt" data-nk="daily">
+        <span class="no-txt"><span class="no-main">매일 정오 알림</span><span class="no-sub">낮 12시에 오늘 살 사람을 알려줘요</span></span>
+        <span class="no-check">✓</span>
+      </button>
+    </div>
+    <div class="notif-hint" id="notifHint"></div>
+    <div class="modal-row"><button class="m-btn m-cancel" id="notifCancel">닫기</button></div>
+  </div>
+</div>
 <div id="renameModal" class="modal">
   <div class="modal-card">
     <div class="modal-t">이름 바꾸기</div>
@@ -676,6 +703,16 @@ $('#pollModal').querySelectorAll('[data-pk]').forEach(b => b.onclick = () => {
 });
 $('#pollCancel').onclick = () => $('#pollModal').classList.remove('show');
 updatePollLabel();
+// 알림 설정 모달: 토글 클릭 → (켤 때) 구독 확인 후 취향 저장·서버 동기화
+$('#notifModal').querySelectorAll('.notif-opt').forEach(b => b.onclick = async () => {
+  const key = b.dataset.nk, p = getNotifPrefs(), next = !p[key];
+  if (next && !(await ensureSubscribed())) { updateNotifHint(); return; } // 권한 거부 시 토글 취소
+  p[key] = next; b.classList.toggle('on', next);
+  setNotifPrefs(p);
+  await syncNotifPrefs(p);
+  updateNotifHint(); refreshNotifBtn();
+});
+$('#notifCancel').onclick = () => $('#notifModal').classList.remove('show');
 
 // 좌상단 갱신 UI(폴링 알약+갱신시각)는 방에 입장한 상태에서만 표시
 const topleft = document.querySelector('.topleft');
@@ -776,7 +813,7 @@ function maybeShowTurnPopup(s) {
 
 // ---------------- 웹푸시 알림 ----------------
 const VAPID_PUBLIC = 'BGxDtl10Cs5Gp3nt8kj6_-rny5fswUUldIMxOzDt7T5bCSeFERKxtXa_Bks2GDoF-XZKHGV61rf1FEP3HWW_Kac';
-const NOTIF_UI = false; // 알림 켜기 버튼 임시 숨김(기능은 구현·유지, true 로 바꾸면 재노출)
+const NOTIF_UI = true; // 알림 설정 버튼(모달) 노출
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 function urlB64ToUint8(b64) {
   const pad = '='.repeat((4 - (b64.length % 4)) % 4);
@@ -788,34 +825,54 @@ function urlB64ToUint8(b64) {
 async function currentSub() {
   try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (_) { return null; }
 }
-async function enableNotif() {
+// 알림 취향(기기별) — {turn, daily}. localStorage=UI소스, 서버=발송 기준.
+const NOTIF_KEY = 'wc_notif';
+const getNotifPrefs = () => { try { return JSON.parse(localStorage.getItem(NOTIF_KEY)) || { turn: false, daily: false }; } catch (e) { return { turn: false, daily: false }; } };
+const setNotifPrefs = p => { try { localStorage.setItem(NOTIF_KEY, JSON.stringify(p)); } catch (e) { } };
+// 권한 확인 + 미구독이면 구독. 성공 시 true.
+async function ensureSubscribed() {
   try {
-    if (Notification.permission === 'denied') { toast('알림이 차단돼 있어요. 설정에서 허용해주세요.'); return; }
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { toast('알림 권한이 필요해요.'); return; }
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(VAPID_PUBLIC) });
-    await jsonPost('/api/subscribe', { subscription: sub.toJSON() });
-    toast('알림을 켰어요 ☕');
-  } catch (e) {
-    toast('알림을 켜지 못했어요. 홈 화면에 설치한 뒤 다시 시도해주세요.');
-  }
-  refreshNotifBtn();
+    if (Notification.permission === 'denied') { toast('알림이 차단돼 있어요. 설정에서 허용해주세요.'); return false; }
+    let sub = await currentSub();
+    if (!sub) {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { toast('알림 권한이 필요해요.'); return false; }
+      const reg = await navigator.serviceWorker.ready;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(VAPID_PUBLIC) });
+      await jsonPost('/api/subscribe', { subscription: sub.toJSON() });
+    }
+    return true;
+  } catch (e) { toast('알림을 켜지 못했어요. 홈 화면에 설치한 뒤 다시 시도해주세요.'); return false; }
 }
-async function disableNotif() {
-  try {
-    const sub = await currentSub();
-    if (sub) { try { await jsonPost('/api/unsubscribe', { endpoint: sub.endpoint }); } catch (_) {} await sub.unsubscribe(); }
-    toast('알림을 껐어요.');
-  } catch (_) {}
-  refreshNotifBtn();
+// 취향을 서버에 반영. 둘 다 끄면 구독 자체 해제.
+async function syncNotifPrefs(p) {
+  const sub = await currentSub();
+  if (!p.turn && !p.daily) {
+    if (sub) { try { await jsonPost('/api/unsubscribe', { endpoint: sub.endpoint }); } catch (_) { } try { await sub.unsubscribe(); } catch (_) { } }
+    return;
+  }
+  if (sub) { try { await jsonPost('/api/notif-prefs', { endpoint: sub.endpoint, turn: p.turn, daily: p.daily }); } catch (_) { } }
+}
+function updateNotifHint() {
+  const h = $('#notifHint'); if (!h) return;
+  if (!pushSupported()) { h.textContent = '이 기기에선 알림을 지원하지 않아요.'; return; }
+  if (Notification.permission === 'denied') { h.textContent = '알림이 차단돼 있어요. 브라우저 설정에서 허용해주세요.'; return; }
+  const p = getNotifPrefs();
+  h.textContent = (!p.turn && !p.daily) ? '받고 싶은 알림을 선택해주세요.' : '';
+}
+function openNotifModal() {
+  const p = getNotifPrefs(), m = $('#notifModal');
+  m.querySelectorAll('.notif-opt').forEach(b => b.classList.toggle('on', !!p[b.dataset.nk]));
+  updateNotifHint();
+  m.classList.add('show');
 }
 async function refreshNotifBtn() {
   const btn = $('#notifBtn'); if (!btn) return;
-  const on = Notification.permission === 'granted' && !!(await currentSub());
-  btn.textContent = on ? '🔔 알림 켜짐' : '🔔 알림 받기';
+  const p = getNotifPrefs();
+  const on = Notification.permission === 'granted' && (p.turn || p.daily) && !!(await currentSub());
+  btn.textContent = on ? '🔔 알림 켜짐' : '🔔 알림 설정';
   btn.classList.toggle('on', on);
-  btn.onclick = on ? disableNotif : enableNotif;
+  btn.onclick = openNotifModal;
 }
 
 // ---------------- 라우팅 ----------------
@@ -1007,7 +1064,7 @@ function renderMain(s, offline) {
 
   const rowBtns = [];
   if (!offline && isApp) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>'); // 미니=네이티브 창 축소 → 앱(WebView2)에서만, 모바일/브라우저엔 숨김
-  if (!offline && NOTIF_UI && pushSupported()) rowBtns.push('<button id="notifBtn">🔔 알림 받기</button>'); // 내 차례 폰 알림 켜기/끄기(NOTIF_UI로 임시 숨김)
+  if (!offline && NOTIF_UI && pushSupported()) rowBtns.push('<button id="notifBtn">🔔 알림 설정</button>'); // 알림 설정 모달 열기(내 차례 / 매일 정오)
   if (!offline && !s.undoReq && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
   const minorRow = rowBtns.length ? `<div class="minor-row">${rowBtns.join('<span class="row-sep">·</span>')}</div>` : '';
 
