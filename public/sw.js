@@ -15,19 +15,28 @@ self.addEventListener('activate', (event) => {
 // no-op: 가로채지 않고 브라우저 기본 네트워크 처리(캐시 안 함). 존재 자체가 WebAPK 설치 조건.
 self.addEventListener('fetch', () => {});
 
-// --- 푸시 알림 (구독/발송 연결은 다음 단계. 지금은 수신 시 알림 표시만) ---
+// --- 푸시 수신 → 알림 표시 (어떤 페이로드/실패에도 항상 정상 알림, 브라우저 대체 알림 방지) ---
 self.addEventListener('push', (event) => {
-  let d = {};
-  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data && event.data.text() }; }
-  const title = d.title || '☕ 내 차례가 돌아왔어요!';
-  event.waitUntil(self.registration.showNotification(title, {
-    body: d.body || '이제 당신이 품앗이를 수행할 차례예요',
-    icon: '/icon-192.png',
-    badge: '/badge.png',
-    tag: d.tag || 'wc-turn',
-    renotify: true,
-    data: { url: d.url || '/' },
-  }));
+  event.waitUntil((async () => {
+    let d = {};
+    try { d = event.data ? event.data.json() : {}; }
+    catch (e) { try { d = { body: event.data && event.data.text() }; } catch (_) { d = {}; } }
+    const title = d.title || '☕ WHOSCOFFEE';
+    const opts = {
+      body: d.body || '새 소식이 있어요',
+      icon: '/icon-192.png',
+      badge: '/badge.png',
+      tag: d.tag || 'wc',
+      renotify: true,
+      data: { url: d.url || '/' },
+    };
+    try {
+      await self.registration.showNotification(title, opts);
+    } catch (e) {
+      // 옵션 비호환(iOS 등)으로 실패해도 최소 옵션으로 재시도 → URL만 뜨는 대체 알림 차단
+      try { await self.registration.showNotification(title, { body: opts.body, data: opts.data }); } catch (_) { }
+    }
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {
