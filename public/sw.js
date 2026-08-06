@@ -25,7 +25,7 @@ self.addEventListener('push', (event) => {
     const opts = {
       body: d.body || '새 소식이 있어요',
       icon: '/icon-192.png',
-      badge: '/badge.png',
+      badge: '/badge.png?v=2',
       tag: d.tag || 'wc',
       renotify: true,
       data: { url: d.url || '/' },
