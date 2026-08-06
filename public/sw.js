@@ -23,7 +23,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, {
     body: d.body || '이제 당신이 품앗이를 수행할 차례예요',
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/badge.png',
     tag: d.tag || 'wc-turn',
     renotify: true,
     data: { url: d.url || '/' },
