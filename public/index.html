@@ -98,6 +98,14 @@
   .notif-opt.on { border-color: var(--brand); background: rgba(140, 110, 70, .08); }
   .notif-opt.on .no-check { background: var(--brand); border-color: var(--brand); color: var(--bg); }
   .notif-hint { font-size: .68rem; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.5; min-height: 1em; }
+  /* 설정 모달: 테마·주기 행 + 섹션 라벨 */
+  .set-list { display: flex; flex-direction: column; gap: 8px; }
+  .set-row { display: flex; align-items: center; gap: 10px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; cursor: pointer; }
+  .set-row .set-txt { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .set-main { font-weight: 700; font-size: .9rem; }
+  .set-sub { font-size: .68rem; color: var(--muted); font-weight: 400; }
+  .set-val { font-size: .82rem; font-weight: 700; color: var(--brand); white-space: nowrap; flex: 0 0 auto; }
+  .set-sec { font-size: .7rem; font-weight: 800; color: var(--muted); letter-spacing: .5px; margin: 16px 0 8px 2px; }
   .offline-bar { background: rgba(120,120,120,.12); color: var(--muted); border: 1px dashed var(--line);
     border-radius: 10px; padding: 8px 12px; font-size: .8rem; text-align: center; margin-bottom: 12px; line-height: 1.4; }
   .btn-wide { width: 100%; border-radius: 12px; padding: 14px; font-weight: 700; border: none; }
@@ -352,7 +360,9 @@
 </head>
 <body>
 <div class="top-scrim" aria-hidden="true"></div>
-<button class="theme-toggle" id="themeToggle" aria-label="다크/라이트 테마 전환"></button>
+<button class="theme-toggle" id="settingsBtn" aria-label="설정">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
 <button class="pin-toggle" id="pinToggle" aria-label="항상 위 고정" title="항상 위 고정">
   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6z"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
 </button>
@@ -361,9 +371,6 @@
   <div class="poll-toggle">
     <button class="poll-refresh" id="pollRefresh" aria-label="지금 새로고침" title="지금 새로고침">
       <svg class="poll-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-    </button>
-    <button class="poll-cycle" id="pollCycle" aria-label="자동 새로고침 주기 설정" title="자동 새로고침 주기">
-      <span class="tx">하루</span>
     </button>
   </div>
   <span class="poll-stamp" id="pollStamp"></span>
@@ -429,9 +436,20 @@
     <div class="modal-row"><button class="m-btn m-cancel" id="pollCancel">닫기</button></div>
   </div>
 </div>
-<div id="notifModal" class="modal">
+<div id="settingsModal" class="modal">
   <div class="modal-card">
-    <div class="modal-t">알림 설정</div>
+    <div class="modal-t">설정</div>
+    <div class="set-list">
+      <button class="set-row" id="setTheme">
+        <span class="set-txt"><span class="set-main">테마</span><span class="set-sub">라이트 / 다크</span></span>
+        <span class="set-val" id="setThemeVal"></span>
+      </button>
+      <button class="set-row" id="setPoll">
+        <span class="set-txt"><span class="set-main">새로고침 주기</span><span class="set-sub">자동 갱신 간격</span></span>
+        <span class="set-val" id="setPollVal"></span>
+      </button>
+    </div>
+    <div class="set-sec">알림</div>
     <div class="notif-opts">
       <button class="notif-opt" data-nk="turn">
         <span class="no-txt"><span class="no-main">내 차례 알림</span><span class="no-sub">상대가 품앗이하면 알려줘요</span></span>
@@ -443,7 +461,7 @@
       </button>
     </div>
     <div class="notif-hint" id="notifHint"></div>
-    <div class="modal-row"><button class="m-btn m-cancel" id="notifCancel">닫기</button></div>
+    <div class="modal-row"><button class="m-btn m-cancel" id="settingsCancel">닫기</button></div>
   </div>
 </div>
 <div id="renameModal" class="modal">
@@ -484,16 +502,13 @@ const BEAN = `<svg width="46" height="46" viewBox="0 0 100 100" style="margin:0 
 
 // 테마 토글 (시스템 무시, 수동 선택 + localStorage 유지)
 const THEME_KEY = 'wc_theme';
-const themeBtn = $('#themeToggle');
 const curTheme = () => document.documentElement.getAttribute('data-theme') || 'light';
-const setThemeIcon = () => { themeBtn.textContent = curTheme() === 'dark' ? '☀' : '☾'; };
-themeBtn.onclick = () => {
+function toggleTheme() {
   const next = curTheme() === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   try { localStorage.setItem(THEME_KEY, next); } catch (e) { }
-  setThemeIcon();
-};
-setThemeIcon();
+  updateSettingsUI();
+}
 const TOKEN_KEY = 'wc_token';
 const STATE_KEY = 'wc_last_state';
 const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
@@ -689,30 +704,35 @@ if (heroLogo) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => heroLogo.addEventListener(ev, logoCancel));
 }
 
-// 시간 라벨: 자동 새로고침 주기 모달
-if (pollCycle) pollCycle.onclick = () => {
+// 우상단 기어 → 설정 모달
+if ($('#settingsBtn')) $('#settingsBtn').onclick = openSettings;
+// 설정: 테마 토글
+if ($('#setTheme')) $('#setTheme').onclick = () => toggleTheme();
+// 설정: 새로고침 주기 → 주기 선택 모달(설정은 닫고 그 위에)
+if ($('#setPoll')) $('#setPoll').onclick = () => {
+  $('#settingsModal').classList.remove('show');
   const m = $('#pollModal');
   m.querySelectorAll('[data-pk]').forEach(b => b.classList.toggle('sel', b.dataset.pk === getPollKey()));
   m.classList.add('show');
 };
 $('#pollModal').querySelectorAll('[data-pk]').forEach(b => b.onclick = () => {
   try { localStorage.setItem(POLL_KEY, b.dataset.pk); } catch (e) { }
-  updatePollLabel();
+  updateSettingsUI();
   $('#pollModal').classList.remove('show');
   setPoll(pollOn);
 });
 $('#pollCancel').onclick = () => $('#pollModal').classList.remove('show');
-updatePollLabel();
-// 알림 설정 모달: 토글 클릭 → (켤 때) 구독 확인 후 취향 저장·서버 동기화
-$('#notifModal').querySelectorAll('.notif-opt').forEach(b => b.onclick = async () => {
+// 설정 > 알림 토글: (켤 때) 구독 확인 후 취향 저장·서버 동기화
+document.querySelectorAll('#settingsModal .notif-opt').forEach(b => b.onclick = async () => {
+  if (!pushSupported()) { updateNotifHint(); return; } // 이 기기 푸시 미지원
   const key = b.dataset.nk, p = getNotifPrefs(), next = !p[key];
   if (next && !(await ensureSubscribed())) { updateNotifHint(); return; } // 권한 거부 시 토글 취소
   p[key] = next; b.classList.toggle('on', next);
   setNotifPrefs(p);
   await syncNotifPrefs(p, next); // 방금 켰으면(next=true) 확인 알림 발송
-  updateNotifHint(); refreshNotifBtn();
+  updateSettingsUI();
 });
-$('#notifCancel').onclick = () => $('#notifModal').classList.remove('show');
+$('#settingsCancel').onclick = () => $('#settingsModal').classList.remove('show');
 
 // 좌상단 갱신 UI(폴링 알약+갱신시각)는 방에 입장한 상태에서만 표시
 const topleft = document.querySelector('.topleft');
@@ -861,20 +881,15 @@ function updateNotifHint() {
   const p = getNotifPrefs();
   h.textContent = (!p.turn && !p.daily) ? '받고 싶은 알림을 선택해주세요.' : '';
 }
-function openNotifModal() {
-  const p = getNotifPrefs(), m = $('#notifModal');
-  m.querySelectorAll('.notif-opt').forEach(b => b.classList.toggle('on', !!p[b.dataset.nk]));
-  updateNotifHint();
-  m.classList.add('show');
-}
-async function refreshNotifBtn() {
-  const btn = $('#notifBtn'); if (!btn) return;
+// 설정 모달 UI 갱신(테마·주기 값 + 알림 토글 상태 + 힌트)
+function updateSettingsUI() {
+  const tv = $('#setThemeVal'); if (tv) tv.textContent = curTheme() === 'dark' ? '☀ 다크' : '☾ 라이트';
+  const pv = $('#setPollVal'); if (pv) pv.textContent = curPollOpt().label + ' ›';
   const p = getNotifPrefs();
-  const on = Notification.permission === 'granted' && (p.turn || p.daily) && !!(await currentSub());
-  btn.textContent = on ? '🔔 알림 켜짐' : '🔔 알림 설정';
-  btn.classList.toggle('on', on);
-  btn.onclick = openNotifModal;
+  document.querySelectorAll('#settingsModal .notif-opt').forEach(b => b.classList.toggle('on', !!p[b.dataset.nk]));
+  updateNotifHint();
 }
+function openSettings() { updateSettingsUI(); $('#settingsModal').classList.add('show'); }
 
 // ---------------- 라우팅 ----------------
 async function load(isPoll) {
@@ -1065,7 +1080,6 @@ function renderMain(s, offline) {
 
   const rowBtns = [];
   if (!offline && isApp) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>'); // 미니=네이티브 창 축소 → 앱(WebView2)에서만, 모바일/브라우저엔 숨김
-  if (!offline && NOTIF_UI && pushSupported()) rowBtns.push('<button id="notifBtn">🔔 알림 설정</button>'); // 알림 설정 모달 열기(내 차례 / 매일 정오)
   if (!offline && !s.undoReq && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
   const minorRow = rowBtns.length ? `<div class="minor-row">${rowBtns.join('<span class="row-sep">·</span>')}</div>` : '';
 
@@ -1106,7 +1120,6 @@ function renderMain(s, offline) {
   if ($('#nameMe')) $('#nameMe').onclick = () => renameMe(me.name);
   if ($('#avaMe')) $('#avaMe').onclick = pickAvatar;
   if ($('#miniBtn')) $('#miniBtn').onclick = () => setMini(true);
-  refreshNotifBtn(); // 알림 버튼 현재 구독 상태 반영(켜짐/받기)
 }
 
 // ---------------- 미니 모드 (새 창 없이 현재 창을 컴팩트 위젯으로) ----------------
