@@ -1259,7 +1259,11 @@ function renderMiniMode(s, offline) {
   setTimeout(hideBusy, 220); // 미니 레이아웃+네이티브 리사이즈가 자리잡은 뒤 오버레이 해제(깜빡임/x·y 스크롤 순간을 덮음)
 }
 
-if (busyOverlay) busyOverlay.classList.add('show', 'solid', 'splash'); // 첫 로딩: 불투명 배경 + 원두 스피너(splash=크게 시작→축소 인트로)
+if (busyOverlay) {
+  busyOverlay.classList.add('show', 'solid'); // 첫 로딩: 불투명 배경 + 원두 스피너
+  // splash 축소 인트로는 안드로이드에서만(네이티브 스플래시의 큰 아이콘과 이어질 때만 자연스러움. iOS 등은 정상 스피너)
+  if (/Android/i.test(navigator.userAgent)) busyOverlay.classList.add('splash');
+}
 load();
 
 // 서비스워커 등록 — 네트워크 전용(캐시 안 함) + WebAPK 설치성 + 푸시 수신 준비.
