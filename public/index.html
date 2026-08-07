@@ -305,6 +305,8 @@
   .busy-overlay.show { display: flex; }
   .busy-bean { transform-origin: center; animation: busy-spin 1.1s cubic-bezier(.6,.1,.4,.9) infinite; }
   @keyframes busy-spin { to { transform: rotate(360deg); } }
+  /* 안드로이드 첫 구동: 네이티브 스플래시 원두 크기에 맞춰 스피너를 크게(정적, 축소 없음) → 이음새 최소화 */
+  .busy-overlay.androsplash .busy-bean { width: 96px; height: 96px; }
   /* 좌상단: 새로고침 버튼 + 마지막 갱신 시각만 (작게·배경 없음, 주기설정 버튼 숨김) */
   body.mini-mode .topleft { top: 8px; left: 8px; gap: 4px; }
   body.mini-mode .poll-toggle { height: auto; border: none; background: none; box-shadow: none; border-radius: 0; }
@@ -496,7 +498,7 @@ function showBusy() {
 }
 function hideBusy() {
   if (busyTimer) { clearTimeout(busyTimer); busyTimer = null; }
-  if (busyOverlay) busyOverlay.classList.remove('show', 'solid');
+  if (busyOverlay) busyOverlay.classList.remove('show', 'solid', 'androsplash');
 }
 const BEAN = `<svg width="46" height="46" viewBox="0 0 100 100" style="margin:0 auto 6px;display:block" aria-hidden="true"><g transform="rotate(-30 40 38)"><ellipse cx="40" cy="38" rx="11" ry="15" fill="var(--brand)"/><path d="M40 25 C36 31 44 45 40 51" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></g><g transform="rotate(-30 60 62)"><ellipse cx="60" cy="62" rx="11" ry="15" fill="var(--brand)"/><path d="M60 49 C56 55 64 69 60 75" fill="none" stroke="var(--card)" stroke-width="2.6" stroke-linecap="round"/></g></svg>`;
 
@@ -1256,7 +1258,10 @@ function renderMiniMode(s, offline) {
   setTimeout(hideBusy, 220); // 미니 레이아웃+네이티브 리사이즈가 자리잡은 뒤 오버레이 해제(깜빡임/x·y 스크롤 순간을 덮음)
 }
 
-if (busyOverlay) busyOverlay.classList.add('show', 'solid'); // 첫 로딩: 불투명 배경 + 원두 스피너(‘불러오는 중’ 텍스트 대체)
+if (busyOverlay) {
+  busyOverlay.classList.add('show', 'solid'); // 첫 로딩: 불투명 배경 + 원두 스피너(‘불러오는 중’ 텍스트 대체)
+  if (/Android/i.test(navigator.userAgent)) busyOverlay.classList.add('androsplash'); // 안드: 스플래시 원두 크기에 맞춰 스피너 크게(정적)
+}
 load();
 
 // 서비스워커 등록 — 네트워크 전용(캐시 안 함) + WebAPK 설치성 + 푸시 수신 준비.
