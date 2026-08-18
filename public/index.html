@@ -333,6 +333,7 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .modal { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.4); padding: 20px; }
   .modal.show { display: flex; }
+  body.modal-open { overflow: hidden; overscroll-behavior: none; } /* 모달 열림 시 뒤 본문 스크롤 잠금 */
   .modal-card { background: var(--card); border-radius: 16px; padding: 20px; width: 100%; max-width: 300px; box-shadow: var(--shadow); }
   .modal-t { font-size: 1rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; text-align: center; }
   .modal-card input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; text-align: center; }
@@ -1264,6 +1265,18 @@ load();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
+
+// 모달(대화상자) 열림 감지 → 뒤 본문 스크롤 잠금. 각 open/close 를 건드리지 않고 중앙에서 처리.
+(function lockScrollWhileModalOpen() {
+  const dialogs = document.querySelectorAll('.modal, .turn-modal');
+  const sync = () => {
+    const anyOpen = [...dialogs].some(d => d.classList.contains('show'));
+    document.body.classList.toggle('modal-open', anyOpen);
+  };
+  const obs = new MutationObserver(sync);
+  dialogs.forEach(d => obs.observe(d, { attributes: true, attributeFilter: ['class'] }));
+  sync();
+})();
 </script>
 </body>
 </html>
