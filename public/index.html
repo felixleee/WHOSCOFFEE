@@ -231,7 +231,8 @@
   .cal-dot.me { background: var(--brand); } .cal-dot.you { background: var(--brand-soft); }
   .cal-dot.img { overflow: hidden; background: var(--line); }
   .cal-dot.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cal-loading { text-align: center; color: var(--muted); padding: 34px 0; font-size: .85rem; }
+  .wc-loading { min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .wc-loading span { font-size: .82rem; color: var(--muted); }
   .undo-row, .minor-row { text-align: center; margin-top: 14px; }
   .undo-row button, .minor-row button { background: none; border: none; color: var(--muted); font-size: .82rem; cursor: pointer; text-decoration: underline; }
   .minor-row .row-sep { color: var(--muted); opacity: .5; margin: 0 8px; text-decoration: none; }
@@ -554,8 +555,12 @@ function recChip(e) { // 리스트 행 이름 앞 원형 칩(프사 우선·없�
   const inner = e.avatar ? `<img src="${e.avatar}" alt="" />` : esc(((e.name || '?').trim().charAt(0)) || '?');
   return `<span class="rec-chip ${cls}">${inner}</span>`;
 }
+// 로딩 자리표시: 최소 높이 확보(레이아웃 튐 방지) + 원두 스피너 + '불러오는 중'
+function loadingHTML() {
+  return `<div class="wc-loading"><svg class="busy-bean" width="40" height="40" viewBox="0 0 256 256" aria-hidden="true"><g transform="rotate(-28 100 96)"><ellipse cx="100" cy="96" rx="28" ry="38" fill="var(--logo)"/><path d="M100 64 C92 82 108 110 100 128" fill="none" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/></g><g transform="rotate(-28 156 160)"><ellipse cx="156" cy="160" rx="28" ry="38" fill="var(--logo)"/><path d="M156 128 C148 146 164 174 156 192" fill="none" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/></g></svg><span>불러오는 중</span></div>`;
+}
 function calendarHTML() {
-  if (!histCache) return `<div class="cal-loading">불러오는 중…</div>`;
+  if (!histCache) return loadingHTML();
   if (!calYM) calYM = defaultMonth();
   const { y, m } = calYM;
   const byDay = {}; let cMe = 0, cYou = 0;
@@ -1218,7 +1223,7 @@ function miniCol(mb, cur) {
 }
 // 미니 카드 내부 HTML (상태별) — 본앱 느낌의 컴팩트 카드
 function renderMini(s, offline) {
-  if (!s) return `<div class="mwait">불러오는 중…</div>`;
+  if (!s) return loadingHTML();
   if (s.phase === 'waiting') {
     return `<div class="mvs"><div class="mcol cur">${miniAva(s.me)}<div class="mnm">${esc(s.me && s.me.name)}</div></div></div><div class="mwait">상대를 기다리는 중…</div>`;
   }
