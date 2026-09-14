@@ -689,15 +689,17 @@ if (heroLogo) {
       const fly = document.createElement('div');
       fly.style.cssText = `position:fixed; left:${r.left}px; top:${r.top}px; width:${r.width}px; height:${r.height}px; margin:0; z-index:70; color:${getComputedStyle(heroLogo).color}; pointer-events:none;`;
       const clone = heroLogo.cloneNode(true);
-      clone.removeAttribute('class'); clone.style.cssText = 'width:100%; height:100%; display:block;';
+      // 회전은 리로드 스피너(.busy-bean)와 동일한 리듬으로 '계속' 돌게 → 중앙 도착 시 멈추지 않고 리로드 스피너로 자연 연결
+      clone.removeAttribute('class'); clone.style.cssText = 'width:100%; height:100%; display:block; transform-box:fill-box; transform-origin:center; animation:busy-spin 1.1s cubic-bezier(.6,.1,.4,.9) infinite;';
       fly.appendChild(clone);
       document.body.appendChild(fly);
       const beanEl = document.querySelector('.busy-bean');
       const spinnerPx = beanEl ? parseFloat(beanEl.getAttribute('width')) : 52;
       const endScale = spinnerPx / r.width; // 도착 크기를 로딩 스피너와 일치 → 미니(28px)는 로고가 커지며 오고, 전체(46px)는 그대로
+      // fly 는 이동+축소만 담당(회전은 clone 이 등속으로) — 위치만 감속해 중앙에 착지, 회전은 안 멈춤
       fly.animate([
-        { transform: 'translate(0px,0px) rotate(0deg) scale(1.12)' },
-        { transform: `translate(${dx}px, ${dy}px) rotate(900deg) scale(${endScale})` } // 헤더 → 화면 중앙으로 회전+스피너 크기에 맞춰 이동
+        { transform: 'translate(0px,0px) scale(1.12)' },
+        { transform: `translate(${dx}px, ${dy}px) scale(${endScale})` } // 헤더 → 화면 중앙으로 스피너 크기에 맞춰 이동
       ], { duration: 640, easing: 'cubic-bezier(.35,.1,.25,1)', fill: 'forwards' });
       setTimeout(hardReload, 660); // 중앙 도착 후 강력 새로고침(리로드 오버레이 원두 스피너로 연결)
     }, 2000);
