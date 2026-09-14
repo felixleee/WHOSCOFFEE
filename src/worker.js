@@ -18,7 +18,10 @@ export default {
     return env.ASSETS.fetch(request);
   },
   // 예약 발송: KST 정오(UTC 03:00) — 각 방에 "오늘은 누가 살 차례" 알림(pref_daily 켠 기기만)
+  // 주말(토/일, KST)은 회사 휴무이므로 데일리 알림 스킵
   async scheduled(event, env, ctx) {
+    const kstDay = new Date((event.scheduledTime || Date.now()) + 9 * 3600 * 1000).getUTCDay(); // 0=일 … 6=토 (KST 기준)
+    if (kstDay === 0 || kstDay === 6) return;
     ctx.waitUntil(sendDailyTurn(env));
   },
 };
