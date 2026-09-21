@@ -125,6 +125,24 @@ async function handleApi(request, env, execCtx, p) {
     if (endpoint) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(endpoint).run();
     return json({ ok: true });
   }
+  if (p === '/api/resubscribe' && m === 'POST') {
+    // SW의 pushsubscriptionchange 전용 — 토큰 없이 기존 endpoint 로 본인 확인 후 새 endpoint 로 이관(사용자·방·취향 유지)
+    const { oldEndpoint, subscription } = await request.json();
+    if (!subscription || !subscription.endpoint) return json({ error: '구독 정보가 없어요.' }, 400);
+    const k = subscription.keys || {};
+    if (oldEndpoint) {
+      const old = await DB.prepare('SELECT user_key, room_id, pref_turn, pref_daily FROM push_subs WHERE endpoint = ?').bind(oldEndpoint).first();
+      if (old) {
+        await DB.prepare(
+          `INSERT INTO push_subs(endpoint, user_key, room_id, p256dh, auth, pref_turn, pref_daily, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(endpoint) DO UPDATE SET user_key = excluded.user_key, room_id = excluded.room_id, p256dh = excluded.p256dh, auth = excluded.auth, pref_turn = excluded.pref_turn, pref_daily = excluded.pref_daily`
+        ).bind(subscription.endpoint, old.user_key, old.room_id, k.p256dh || '', k.auth || '', old.pref_turn, old.pref_daily, nowIso()).run();
+        if (oldEndpoint !== subscription.endpoint) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(oldEndpoint).run();
+        return json({ ok: true });
+      }
+    }
+    return json({ ok: true, note: 'no-old' }); // 매핑 불가 — 다음 앱 실행 시 reconcileNotif 가 복구
+  }
   if (p === '/api/notif-prefs' && m === 'POST') {
     // 기기별 알림 취향 저장(내 차례 / 매일 정오). 내 구독만 수정 가능.
     const ctx = await meAndRoom(DB, token);
@@ -136,7 +154,13 @@ async function handleApi(request, env, execCtx, p) {
     // 방금 켠 경우: "이제부터 ~ 알려드릴게요" 확인 알림(발송 파이프라인 확인 겸)
     if (announce && (turn || daily) && env.VAPID_JWK) {
       const s = await DB.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE endpoint = ? AND user_key = ?').bind(endpoint, ctx.key).first();
-      if (s) execCtx.waitUntil((async () => { try { await sendPush(env, s, welcomePayload(!!turn, !!daily)); } catch (e) { } })());
+      if (s) execCtx.waitUntil((async () => {
+        try {
+          const wp = welcomePayload(!!turn, !!daily);
+          const status = await sendPush(env, s, wp);
+          await logNotif(DB, { room_id: ctx.room.id, user_key: ctx.key, kind: 'welcome', title: wp.title, body: wp.body, status });
+        } catch (e) { }
+      })());
     }
     return json({ ok: true });
   }
@@ -308,6 +332,13 @@ async function saveSub(DB, roomId, key, sub) {
      ON CONFLICT(endpoint) DO UPDATE SET user_key = excluded.user_key, room_id = excluded.room_id, p256dh = excluded.p256dh, auth = excluded.auth`
   ).bind(sub.endpoint, key, roomId, k.p256dh || '', k.auth || '', nowIso()).run();
 }
+// 알림 발송 로그(관측용). notif_log 테이블이 없거나 오류여도 발송에는 영향 없음.
+async function logNotif(DB, row) {
+  try {
+    await DB.prepare('INSERT INTO notif_log(room_id, user_key, kind, title, body, status, created_at) VALUES(?, ?, ?, ?, ?, ?, ?)')
+      .bind(row.room_id || '', row.user_key || '', row.kind, row.title || null, row.body || null, row.status == null ? null : row.status, nowIso()).run();
+  } catch (e) { /* 무시 */ }
+}
 // 상대(=이제 차례가 된 사람)의 모든 기기 구독으로 "내 차례" 푸시 발송. 실패/만료 구독은 정리.
 async function notifyTurn(env, DB, room, buyerKey) {
   try {
@@ -320,6 +351,7 @@ async function notifyTurn(env, DB, room, buyerKey) {
     for (const s of subs) {
       try {
         const status = await sendPush(env, s, payload);
+        await logNotif(DB, { room_id: room.id, user_key: targetKey, kind: 'turn', title: payload.title, body: payload.body, status });
         if (status === 404 || status === 410) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(s.endpoint).run();
       } catch (e) { /* 개별 발송 실패는 무시 */ }
     }
@@ -353,6 +385,7 @@ async function sendDailyTurn(env) {
       : { title: '☕ 오늘의 품앗이', body: `오늘 커피는 ${keyName(room, turnKey)}님이 살 차례예요`, tag: 'wc-daily', url: '/' };
     try {
       const status = await sendPush(env, s, payload);
+      await logNotif(DB, { room_id: s.room_id, user_key: s.user_key, kind: 'daily', title: payload.title, body: payload.body, status });
       if (status === 404 || status === 410) await DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(s.endpoint).run();
     } catch (e) { /* 개별 실패는 무시 */ }
   }

@@ -59,3 +59,15 @@ CREATE TABLE IF NOT EXISTS push_subs (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_key);
+-- 알림 발송 로그(관측용): 언제 누구에게 어떤 알림을 보냈고 결과(HTTP status)는 어땠는지.
+CREATE TABLE IF NOT EXISTS notif_log (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id    TEXT NOT NULL,
+  user_key   TEXT NOT NULL,
+  kind       TEXT NOT NULL,   -- 'turn' | 'daily' | 'welcome'
+  title      TEXT,
+  body       TEXT,
+  status     INTEGER,         -- sendPush HTTP 상태(2xx 성공, 404/410 만료 등)
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notiflog_created ON notif_log(created_at);

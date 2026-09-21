@@ -895,6 +895,23 @@ async function syncNotifPrefs(p, announce) {
   // announce=true(방금 켠 경우) → 서버가 확인 알림 발송("이제부터 ~ 알려드릴게요")
   if (sub) { try { await jsonPost('/api/notif-prefs', { endpoint: sub.endpoint, turn: p.turn, daily: p.daily, announce: !!announce }, { noBusy: true }); } catch (_) { } }
 }
+// 앱 시작 시 알림 상태 자기복구: 로컬은 '켬'인데 실제 구독이 끊겨 있으면(만료·삭제) 조용히 재구독+서버 재동기화.
+// → UI(로컬)와 실제 발송 상태가 어긋나 "켜져 있는데 안 오는" 문제 방지. 미지원/미로그인/권한미허용이면 스킵(불쑥 팝업 X).
+async function reconcileNotif() {
+  try {
+    if (!pushSupported() || !getToken()) return;
+    const p = getNotifPrefs();
+    if (!p.turn && !p.daily) return;                    // 켠 게 없으면 아무것도 안 함
+    if (Notification.permission !== 'granted') return;  // 권한 없으면 조용히 스킵(팝업 안 띄움)
+    let sub = await currentSub();
+    if (!sub) {
+      const reg = await navigator.serviceWorker.ready;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(VAPID_PUBLIC) });
+    }
+    await jsonPost('/api/subscribe', { subscription: sub.toJSON() }, { noBusy: true }); // 서버에 재등록(upsert)
+    await syncNotifPrefs(p, false);                     // 로컬 취향을 서버에 재반영(새 구독 기본값 덮기)
+  } catch (_) { }
+}
 function updateNotifHint() {
   const h = $('#notifHint'); if (!h) return;
   if (!pushSupported()) { h.textContent = '이 기기에선 알림을 지원하지 않아요.'; return; }
@@ -1283,7 +1300,9 @@ load();
 // 서비스워커 등록 — 네트워크 전용(캐시 안 함) + WebAPK 설치성 + 푸시 수신 준비.
 // updateViaCache:'none' → sw.js 업데이트는 항상 네트워크로 확인(신선도 보장). 캐시 정리는 SW activate 가 담당.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+    .then(() => reconcileNotif()) // 등록 후 끊긴 구독 자동 복구
+    .catch(() => {});
 }
 
 // 모달(대화상자) 열림 감지 → 뒤 본문 스크롤 잠금. 각 open/close 를 건드리지 않고 중앙에서 처리.

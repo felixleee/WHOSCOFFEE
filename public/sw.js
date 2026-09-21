@@ -39,6 +39,30 @@ self.addEventListener('push', (event) => {
   })());
 });
 
+// --- 브라우저가 푸시 구독을 회전/무효화할 때 자동 재구독 → 서버 이관(토큰 없이 기존 endpoint 로 본인 확인) ---
+// 공개 VAPID 키(공개돼도 안전). index.html·wrangler.toml 과 동일해야 함.
+const VAPID_PUBLIC_B64 = 'BGxDtl10Cs5Gp3nt8kj6_-rny5fswUUldIMxOzDt7T5bCSeFERKxtXa_Bks2GDoF-XZKHGV61rf1FEP3HWW_Kac';
+function b64ToU8(b64) {
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  const s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s), arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const oldEndpoint = event.oldSubscription && event.oldSubscription.endpoint;
+      const sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUBLIC_B64) });
+      await fetch('/api/resubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldEndpoint, subscription: sub.toJSON() }),
+      });
+    } catch (e) { /* 실패해도 다음 앱 실행 시 reconcileNotif 가 복구 */ }
+  })());
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/';
