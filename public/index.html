@@ -163,6 +163,7 @@
   .buy-date .bd-chg { text-decoration: underline; }
   .buy-date.sel { border-color: var(--brand); color: var(--brand); }
   .buy-date.sel b { color: var(--brand); }
+  .buy-date.fixed { cursor: default; }
   .modal-s { font-size: .78rem; color: var(--muted); text-align: center; margin: -6px 0 12px; line-height: 1.4; word-break: keep-all; }
   /* 날짜 모달 달력: 범위 안 날만 버튼(누를 수 있음), 밖은 흐린 숫자. 월 이동·요일 줄은 기록 달력(.cal-*) 재사용 */
   .cal-nav.dp-nav { margin: 4px 0 6px; }
@@ -1161,9 +1162,11 @@ function renderMain(s, offline) {
   const pendingOtherUndo = !offline && s.undoReq && !s.undoReq.byMe; // 상대가 취소 요청 → 먼저 응답해야 함
   const range = (!offline && myTurn && s.buyRange) || null;
   if (buyDate && (!range || buyDate < range.min || buyDate >= range.max)) buyDate = null; // 범위 밖(날이 바뀜 등)이면 오늘로
-  const datePick = (range && range.min < range.max) // 오늘 하루뿐이면 고를 게 없으니 숨김
-    ? `<div class="buy-date-row"><button class="buy-date${buyDate ? ' sel' : ''}" id="buyDatePick">📅 <b>${dayLabel(buyDate || range.max)}</b> ${dayRel(buyDate || range.max, range.max)} · <span class="bd-chg">날짜 변경</span></button></div>`
-    : '';
+  const pickDay = range && (buyDate || range.max);
+  const datePick = !range ? ''
+    : range.min < range.max
+      ? `<div class="buy-date-row"><button class="buy-date${buyDate ? ' sel' : ''}" id="buyDatePick">📅 <b>${dayLabel(pickDay)}</b> ${dayRel(pickDay, range.max)} · <span class="bd-chg">날짜 변경</span></button></div>`
+      : `<div class="buy-date-row"><span class="buy-date fixed">📅 <b>${dayLabel(pickDay)}</b> 오늘</span></div>`; // 오늘 하루뿐(상대가 오늘 찍음) → 날짜만 보여 주고 변경은 숨김
   let center;
   if (myTurn) {
     center = `<div class="bubble">
