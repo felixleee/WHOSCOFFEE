@@ -156,15 +156,15 @@
   .battle-btn { width: 100%; margin-top: 16px; border: none; border-radius: 16px; background: var(--brand); color: var(--bg); font-weight: 800; font-size: 1.1rem; padding: 16px; cursor: pointer; transition: transform .1s; }
   .battle-btn:active { transform: scale(.97); }
   /* 도장 날짜 고르기: 버튼 위 알약 → 날짜 모달 */
-  .buy-date-row { text-align: center; margin-top: 14px; }
-  .buy-date-row + .battle-btn { margin-top: 10px; }
+  .buy-date-row { text-align: center; margin-top: 4px; }
+  .buy-date-row + .battle-btn { margin-top: 16px; }
   .buy-date { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: .8rem; cursor: pointer; }
   .buy-date b { color: var(--ink); font-weight: 700; }
   .buy-date .bd-chg { text-decoration: underline; }
   .buy-date.sel { border-color: var(--brand); color: var(--brand); }
   .buy-date.sel b { color: var(--brand); }
   .buy-date.fixed { cursor: default; }
-  .modal-s { font-size: .78rem; color: var(--muted); text-align: center; margin: -6px 0 12px; line-height: 1.4; word-break: keep-all; }
+  .modal-s { font-size: .78rem; color: var(--muted); text-align: center; margin: -6px 0 12px; line-height: 1.4; word-break: keep-all; white-space: pre-line; }
   /* 날짜 모달 달력: 범위 안 날만 버튼(누를 수 있음), 밖은 흐린 숫자. 월 이동·요일 줄은 기록 달력(.cal-*) 재사용 */
   .cal-nav.dp-nav { margin: 4px 0 6px; }
   .dp-nav button:disabled { opacity: .25; cursor: default; }
@@ -265,12 +265,6 @@
   .undo-row, .minor-row { text-align: center; margin-top: 14px; }
   .undo-row button, .minor-row button { background: none; border: none; color: var(--muted); font-size: .82rem; cursor: pointer; text-decoration: underline; }
   .minor-row .row-sep { color: var(--muted); opacity: .5; margin: 0 8px; text-decoration: none; }
-  /* 마지막 기록 취소 요청/승인 배너 */
-  .undo-banner { margin-top: 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--brand-soft); background: var(--card); color: var(--ink); font-size: .84rem; font-weight: 700; text-align: center; line-height: 1.5; }
-  .undo-banner.wait { border-style: dashed; color: var(--muted); font-weight: 600; }
-  .undo-acts { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-  .undo-acts button { border: none; border-radius: 9px; padding: 7px 18px; font-weight: 800; font-size: .82rem; cursor: pointer; background: var(--brand); color: var(--bg); }
-  .undo-acts button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; }
   /* 전체화면: 창 자체는 스크롤 방지. 기록은 rec-list 가 최대 3개만 보이고 내부 스크롤(타이틀 고정) */
   /* 창 높이(viewer.cs normalSize)를 콘텐츠에 맞게 키워 여유롭게 3개가 들어가도록 함 — 섹션 간격은 원래대로 유지 */
   html.is-app { overflow-x: hidden; overflow-y: auto; }  /* 콘텐츠가 창보다 커지면 세로 스크롤(스크롤바는 아래에서 숨김) */
@@ -297,12 +291,6 @@
   .mswap { color: var(--brand-soft); font-size: 15px; }
   .mbuy { background: var(--brand); color: var(--bg); border: none; border-radius: 12px; padding: 9px 18px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; }
   .mbuy:disabled { opacity: .55; cursor: default; }
-  .mundo { margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.5; }
-  .mundo.wait { color: var(--muted); font-weight: 600; }
-  .mundo b { color: var(--brand-soft); }
-  .mundo-acts { display: flex; gap: 6px; justify-content: center; margin-top: 5px; }
-  .mundo button { border: none; border-radius: 7px; padding: 4px 12px; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; background: var(--brand); color: var(--bg); }
-  .mundo button.ghost, .mundo.wait button { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; padding: 3px 10px; }
   .mwait { font-size: 12.5px; color: var(--muted); }
   body.mini-mode { justify-content: flex-start; padding-top: 30px; padding-bottom: 12px; }
   body.mini-mode #footSwitch { display: none !important; }
@@ -493,6 +481,16 @@
     </div>
     <div class="notif-hint" id="notifHint"></div>
     <div class="modal-row"><button class="m-btn m-cancel" id="settingsCancel">닫기</button></div>
+  </div>
+</div>
+<div id="undoModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-t">마지막 기록을 취소할까요?</div>
+    <div class="modal-s" id="undoHint"></div>
+    <div class="modal-row">
+      <button class="m-btn m-cancel" id="undoNo">닫기</button>
+      <button class="m-btn m-ok" id="undoYes">기록 취소</button>
+    </div>
   </div>
 </div>
 <div id="renameModal" class="modal">
@@ -877,7 +875,13 @@ function pickAvatar() {
 // 내 차례 복귀 1회성 팝업: 상대가 방금 사서 내 차례가 됐을 때 차례마다 1번만 표시. '알겠어요'로 닫음.
 const TURN_SEEN_KEY = 'wc_turnseen';
 let turnPopupFor = null; // 이번 세션에서 이미 처리(표시/닫음)한 차례 마커
+let selfUndone = false;  // 내가 방금 기록을 취소해서 차례가 돌아옴 → 팝업 없이 본 것으로 처리
 function maybeShowTurnPopup(s) {
+  if (selfUndone) { // 취소 직후 첫 상태: 돌아온 차례를 본 것으로 기록하고 끝(첫 기록을 취소해 last 가 없으면 기록할 것도 없음)
+    selfUndone = false;
+    if (s && s.last && !s.last.mine) { turnPopupFor = String(s.last.date); try { localStorage.setItem(TURN_SEEN_KEY, turnPopupFor); } catch (_) {} }
+    return;
+  }
   if (!s || s.phase !== 'active' || !s.myTurn || !s.last || s.last.mine) return; // 상대가 방금 산 '내 차례 복귀'만
   const marker = String(s.last.date); // 마지막 구매 시각 = 이 차례의 고유 마커
   if (turnPopupFor === marker) return; // 이미 이 차례 처리함(중복 표시·진동 방지)
@@ -1136,6 +1140,18 @@ $('#dateOk').onclick = () => {
 };
 $('#dateCancel').onclick = () => $('#dateModal').classList.remove('show'); // 닫기 = 바꾼 것 버림
 
+// 마지막 기록 취소 — 상대 승인 없이 바로 삭제(내가 찍은 마지막 기록만). 잘못 누름 방지로 확인 창 한 번.
+function openUndoModal(last) {
+  $('#undoHint').textContent = `${dayLabel(last.date)} 내 기록이 지워지고\n차례가 다시 나에게 돌아와요`;
+  $('#undoModal').classList.add('show');
+}
+$('#undoNo').onclick = () => $('#undoModal').classList.remove('show');
+$('#undoYes').onclick = async () => {
+  $('#undoModal').classList.remove('show');
+  try { await jsonPost('/api/undo', {}); selfUndone = true; histCache = null; calYM = null; toast('마지막 기록을 취소했어요'); load(); }
+  catch (e) { toast(e.message); load(); }
+};
+
 // 3) 품앗이 메인 (내 관점)
 function renderMain(s, offline) {
   hideBusy();
@@ -1159,7 +1175,6 @@ function renderMain(s, offline) {
     </div>`;
   const versus = `<div class="versus3">${meCol}<div class="vs" title="번갈아 사는 품앗이">⇄</div>${mateCol}</div>`;
 
-  const pendingOtherUndo = !offline && s.undoReq && !s.undoReq.byMe; // 상대가 취소 요청 → 먼저 응답해야 함
   const range = (!offline && myTurn && s.buyRange) || null;
   if (buyDate && (!range || buyDate < range.min || buyDate >= range.max)) buyDate = null; // 범위 밖(날이 바뀜 등)이면 오늘로
   const pickDay = range && (buyDate || range.max);
@@ -1176,9 +1191,7 @@ function renderMain(s, offline) {
       </div>
       ${offline
         ? `<div class="waitbox">⚠ 서버가 꺼져 있어 지금은 도장을 찍을 수 없어요.<br>서버가 켜지면 찍을 수 있어요.</div>`
-        : pendingOtherUndo
-          ? `<div class="waitbox">🔁 상대의 취소 요청을 먼저 처리해주세요.<br>아래에서 <b>승인</b> 또는 <b>거절</b>하면 품앗이를 이어갈 수 있어요.</div>`
-          : `${datePick}<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
+        : `${datePick}<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
   } else {
     center = `<div class="bubble">
         ${cup}
@@ -1208,25 +1221,15 @@ function renderMain(s, offline) {
     recent = `<div class="recent"><div class="rec-head"><h2>${recTitle}</h2>${tabs}</div>${body}</div>`;
   }
 
-  // 마지막 기록 취소: 요청 → 상대 승인 방식
-  let undoBanner = '';
-  if (!offline && s.undoReq) {
-    undoBanner = s.undoReq.byMe
-      ? `<div class="undo-banner wait">⏳ 마지막 기록 취소를 요청했어요.<br>상대 승인을 기다리는 중…
-           <div class="undo-acts"><button id="undoCancel" class="ghost">요청 철회</button></div></div>`
-      : `<div class="undo-banner">🔁 <b>${esc(s.undoReq.byName)}</b>님이 마지막 기록 취소를 요청했어요.
-           <div class="undo-acts"><button id="undoApprove">승인</button><button id="undoReject" class="ghost">거절</button></div></div>`;
-  }
-
   const rowBtns = [];
   if (!offline && isApp) rowBtns.push('<button id="miniBtn">⧉ 미니 플로팅</button>'); // 미니=네이티브 창 축소 → 앱(WebView2)에서만, 모바일/브라우저엔 숨김
-  if (!offline && !s.undoReq && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
+  if (!offline && s.last && s.last.mine) rowBtns.push('<button id="undo">마지막 기록 취소</button>');
   const minorRow = rowBtns.length ? `<div class="minor-row">${rowBtns.join('<span class="row-sep">·</span>')}</div>` : '';
 
   app.innerHTML = `
     ${offline ? '<div class="offline-bar">⚠ 오프라인 — 마지막으로 본 상태예요. 서버가 켜지면 자동으로 갱신돼요.</div>' : ''}
     ${versus}
-    ${center}${undoBanner}${recent}
+    ${center}${recent}
     ${minorRow}`;
 
   setFoot(offline ? '' : `<button id="switch">다른 사람으로 전환</button>`);
@@ -1247,18 +1250,7 @@ function renderMain(s, offline) {
     }
     catch (e) { busy = false; toast(e.message); load(); }
   };
-  if ($('#undo')) $('#undo').onclick = async () => {
-    try { await jsonPost('/api/undo', {}); toast('취소 요청을 보냈어요\n상대 승인을 기다릴게요'); load(); } catch (e) { toast(e.message); }
-  };
-  if ($('#undoCancel')) $('#undoCancel').onclick = async () => {
-    try { await jsonPost('/api/undo-cancel', {}); toast('요청을 철회했어요'); load(); } catch (e) { toast(e.message); }
-  };
-  if ($('#undoApprove')) $('#undoApprove').onclick = async () => {
-    try { await jsonPost('/api/undo-approve', {}); histCache = null; toast('취소를 승인했어요'); load(); } catch (e) { toast(e.message); load(); }
-  };
-  if ($('#undoReject')) $('#undoReject').onclick = async () => {
-    try { await jsonPost('/api/undo-cancel', {}); toast('취소를 거절했어요'); load(); } catch (e) { toast(e.message); }
-  };
+  if ($('#undo')) $('#undo').onclick = () => openUndoModal(s.last);
   if ($('#switch')) $('#switch').onclick = async () => {
     try { await jsonPost('/api/logout', {}); } catch {}
     setToken(''); load();
@@ -1370,17 +1362,10 @@ function renderMini(s, offline) {
   if (s.phase !== 'active') return `<div class="mwait">품앗이 종료됨</div>`;
   const myTurn = s.myTurn, me = s.me, mate = s.mate;
   const vs = `<div class="mvs">${miniCol(me, myTurn)}<span class="mswap">⇄</span>${miniCol(mate, !myTurn)}</div>`;
-  const pendingOtherUndo = !offline && s.undoReq && !s.undoReq.byMe; // 상대 취소 요청 대기 → 수행 잠금
-  const btn = (myTurn && !pendingOtherUndo)
+  const btn = myTurn
     ? (offline ? `<div class="mwait">서버 꺼짐 · 도장 불가</div>` : `<button id="mbuy" class="mbuy">☕ 품앗이 수행</button>`)
     : '';
-  let mundo = '';
-  if (!offline && s.undoReq) {
-    mundo = s.undoReq.byMe
-      ? `<div class="mundo wait">⏳ 취소 요청 중 <button id="mUndoCancel">철회</button></div>`
-      : `<div class="mundo">🔁 <b>${esc(s.undoReq.byName)}</b> 취소 요청<div class="mundo-acts"><button id="mUndoApprove">승인</button><button id="mUndoReject" class="ghost">거절</button></div></div>`;
-  }
-  return vs + btn + mundo;
+  return vs + btn;
 }
 
 // 미니 모드 화면 렌더 (active/waiting 일 때만 진입)
@@ -1395,9 +1380,6 @@ function renderMiniMode(s, offline) {
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#miniExit')) $('#miniExit').onclick = () => setMini(false);
-  if ($('#mUndoApprove')) $('#mUndoApprove').onclick = async () => { try { await jsonPost('/api/undo-approve', {}); histCache = null; toast('취소 승인'); load(); } catch (e) { toast(e.message); load(); } };
-  if ($('#mUndoReject')) $('#mUndoReject').onclick = async () => { try { await jsonPost('/api/undo-cancel', {}); toast('취소 거절'); load(); } catch (e) { toast(e.message); } };
-  if ($('#mUndoCancel')) $('#mUndoCancel').onclick = async () => { try { await jsonPost('/api/undo-cancel', {}); toast('요청 철회'); load(); } catch (e) { toast(e.message); } };
   requestAnimationFrame(syncMiniHeight); // 렌더 후 실제 높이 측정 → 창 높이 맞춤
   setTimeout(hideBusy, 220); // 미니 레이아웃+네이티브 리사이즈가 자리잡은 뒤 오버레이 해제(깜빡임/x·y 스크롤 순간을 덮음)
 }

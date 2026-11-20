@@ -62,8 +62,6 @@ async function handleApi(request, env, execCtx, p) {
     const last = await lastEvent(DB, room.id);
     const nextKey = currentTurnKey(room, last);
     if (key !== nextKey) throw new Error(`지금은 ${keyName(room, nextKey)}님 차례예요.`);
-    // 상대의 취소 요청이 대기 중이면 먼저 승인/거절해야 함(수행이 요청을 조용히 무시하는 것 방지)
-    if (await getUndoRequest(DB, room.id)) throw new Error('상대의 취소 요청을 먼저 처리해주세요.');
     const { note, date } = await request.json();
     // 날짜는 고를 수 있음: 상대가 찍은 날 ~ 오늘(KST). 안 보내면 오늘.
     const range = await buyRange(DB, room.id, last);
@@ -72,38 +70,17 @@ async function handleApi(request, env, execCtx, p) {
     if (day > range.max) throw new Error('오늘 이후 날짜로는 기록할 수 없어요.');
     if (day < range.min) throw new Error(`${fmtMD(range.min)} 이전 날짜로는 기록할 수 없어요.`);
     await recordBuy(DB, room.id, key, note, day);
-    await clearUndoRequest(DB, room.id); // 새 도장 → 이전 취소 요청은 무효
     execCtx.waitUntil(notifyTurn(env, DB, room, key, day)); // 상대에게 "내 차례" 푸시(응답 지연 없이 백그라운드)
     return json({ ok: true });
   }
   if (p === '/api/undo' && m === 'POST') {
-    // 취소 "요청" — 상대 승인 후 실제 삭제. 내가 찍은 마지막 기록만 요청 가능.
+    // 마지막 기록 취소 — 상대 승인 없이 바로 삭제. 내가 찍은 마지막 기록만 가능.
     const ctx = await meAndRoom(DB, token);
     if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
     const last = await lastEvent(DB, ctx.room.id);
     if (!last) return json({ error: '취소할 기록이 없어요.' }, 400);
-    if (last.user_key !== ctx.key) return json({ error: '내가 찍은 기록만 취소 요청할 수 있어요.' }, 403);
-    await requestUndo(DB, ctx.room.id, last.id, ctx.key);
-    return json({ ok: true, pending: true });
-  }
-  if (p === '/api/undo-approve' && m === 'POST') {
-    // 상대(요청자 아님)만 승인 → 실제 삭제
-    const ctx = await meAndRoom(DB, token);
-    if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
-    const req = await getUndoRequest(DB, ctx.room.id);
-    if (!req) return json({ error: '취소 요청이 없어요.' }, 400);
-    if (req.by_key === ctx.key) return json({ error: '상대가 승인해야 취소돼요.' }, 403);
-    const last = await lastEvent(DB, ctx.room.id);
-    if (!last || last.id !== req.event_id) { await clearUndoRequest(DB, ctx.room.id); return json({ error: '상황이 바뀌어 요청이 무효가 됐어요.' }, 409); }
-    await DB.prepare('DELETE FROM events WHERE id = ?').bind(req.event_id).run();
-    await clearUndoRequest(DB, ctx.room.id);
-    return json({ ok: true });
-  }
-  if (p === '/api/undo-cancel' && m === 'POST') {
-    // 요청 철회(요청자) 또는 거절(상대) — 둘 다 요청만 지움
-    const ctx = await meAndRoom(DB, token);
-    if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
-    await clearUndoRequest(DB, ctx.room.id);
+    if (last.user_key !== ctx.key) return json({ error: '내가 찍은 기록만 취소할 수 있어요.' }, 403);
+    await DB.prepare('DELETE FROM events WHERE id = ?').bind(last.id).run();
     return json({ ok: true });
   }
   if (p === '/api/logout' && m === 'POST') {
@@ -316,7 +293,6 @@ async function closeRoom(DB, roomId) {
   await DB.prepare('DELETE FROM events WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM sessions WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM members WHERE room_id = ?').bind(roomId).run();
-  await DB.prepare('DELETE FROM undo_requests WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM push_subs WHERE room_id = ?').bind(roomId).run();
   await DB.prepare('DELETE FROM rooms WHERE id = ?').bind(roomId).run();
 }
@@ -417,20 +393,6 @@ async function sendDailyTurn(env) {
     } catch (e) { /* 개별 실패는 무시 */ }
   }
 }
-// ---- 취소 요청(undo_requests): 방마다 최대 1건, 상대 승인 시 실제 삭제 ----
-async function getUndoRequest(DB, roomId) {
-  return await DB.prepare('SELECT event_id, by_key FROM undo_requests WHERE room_id = ?').bind(roomId).first();
-}
-async function requestUndo(DB, roomId, eventId, byKey) {
-  await DB.prepare(
-    `INSERT INTO undo_requests(room_id, event_id, by_key, created_at) VALUES(?, ?, ?, ?)
-     ON CONFLICT(room_id) DO UPDATE SET event_id = excluded.event_id, by_key = excluded.by_key, created_at = excluded.created_at`
-  ).bind(roomId, eventId, byKey, nowIso()).run();
-}
-async function clearUndoRequest(DB, roomId) {
-  await DB.prepare('DELETE FROM undo_requests WHERE room_id = ?').bind(roomId).run();
-}
-
 // ---- 전체 기록(달력 뷰) ----
 async function getHistory(DB, token) {
   const ctx = await meAndRoom(DB, token);
@@ -466,7 +428,6 @@ async function getState(DB, token) {
     const mb = memberByKey(room, e.user_key);
     return { date: e.date, name: mb ? mb.name : '?', avatar: mb ? mb.avatar || null : null, isMe: e.user_key === meKey, note: e.note };
   });
-  const ur = await getUndoRequest(DB, room.id);
   return {
     phase: 'active',
     me: pub(me), mate: pub(mate),
@@ -475,7 +436,6 @@ async function getState(DB, token) {
     buyRange: meKey === nextKey ? await buyRange(DB, room.id, last) : null, // 내 차례일 때 고를 수 있는 날짜 {min, max}
     turn: pub(memberByKey(room, nextKey)),
     last: last ? { name: keyName(room, last.user_key), date: last.date, mine: last.user_key === meKey } : null,
-    undoReq: ur ? { byMe: ur.by_key === meKey, byName: keyName(room, ur.by_key) } : null,
     recent,
   };
 }

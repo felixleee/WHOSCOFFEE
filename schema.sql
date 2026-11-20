@@ -35,13 +35,6 @@ CREATE TABLE sessions (
   room_id    TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
--- 마지막 기록 취소 요청(방마다 최대 1건). 상대가 승인하면 실제 삭제.
-CREATE TABLE undo_requests (
-  room_id    TEXT PRIMARY KEY,
-  event_id   INTEGER NOT NULL,   -- 취소 대상 이벤트
-  by_key     TEXT NOT NULL,      -- 요청한 사람(=그 기록 작성자)
-  created_at TEXT NOT NULL
-);
 -- config 테이블은 더 이상 방 저장에 쓰지 않음(과거 데이터 이관용으로만 남을 수 있음)
 CREATE TABLE IF NOT EXISTS config (
   k TEXT PRIMARY KEY,
