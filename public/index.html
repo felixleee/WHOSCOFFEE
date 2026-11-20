@@ -155,6 +155,34 @@
   .cup { display: block; margin: 2px auto 0; }
   .battle-btn { width: 100%; margin-top: 16px; border: none; border-radius: 16px; background: var(--brand); color: var(--bg); font-weight: 800; font-size: 1.1rem; padding: 16px; cursor: pointer; transition: transform .1s; }
   .battle-btn:active { transform: scale(.97); }
+  /* 도장 날짜 고르기: 버튼 위 알약 → 날짜 모달 */
+  .buy-date-row { text-align: center; margin-top: 14px; }
+  .buy-date-row + .battle-btn { margin-top: 10px; }
+  .buy-date { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: .8rem; cursor: pointer; }
+  .buy-date b { color: var(--ink); font-weight: 700; }
+  .buy-date .bd-chg { text-decoration: underline; }
+  .buy-date.sel { border-color: var(--brand); color: var(--brand); }
+  .buy-date.sel b { color: var(--brand); }
+  .modal-s { font-size: .78rem; color: var(--muted); text-align: center; margin: -6px 0 12px; line-height: 1.4; word-break: keep-all; }
+  /* 날짜 모달 달력: 범위 안 날만 버튼(누를 수 있음), 밖은 흐린 숫자. 월 이동·요일 줄은 기록 달력(.cal-*) 재사용 */
+  .cal-nav.dp-nav { margin: 4px 0 6px; }
+  .dp-nav button:disabled { opacity: .25; cursor: default; }
+  .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 4px; }
+  .dp-day { position: relative; height: 36px; border-radius: 9px; border: 1.5px solid transparent; background: none; padding: 0; display: flex; align-items: center; justify-content: center;
+    font: inherit; font-size: .82rem; font-variant-numeric: tabular-nums; color: var(--ink); }
+  button.dp-day { cursor: pointer; font-weight: 700; background: rgba(120, 90, 60, .08); }
+  :root[data-theme="dark"] button.dp-day:not(.sel) { background: rgba(255, 255, 255, .07); }
+  .dp-day.off { color: var(--muted); opacity: .35; }
+  .dp-day.sun { color: #b5654d; }
+  .dp-day.today { border-color: var(--brand); }
+  .dp-day.mate::after { content: ''; position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--brand-soft); }
+  .dp-day.sel { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+  .dp-day.sel::after { background: var(--bg); }
+  .dp-legend { display: flex; justify-content: center; gap: 14px; margin-top: 10px; font-size: .7rem; color: var(--muted); }
+  .dp-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dp-legend i { display: inline-block; }
+  .dp-legend .lg-today { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid var(--brand); }
+  .dp-legend .lg-mate { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-soft); }
 
   .versus3 { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; }
   .vcol { text-align: center; min-width: 0; }
@@ -473,6 +501,20 @@
     <div class="modal-row">
       <button class="m-btn m-cancel" id="renameCancel">취소</button>
       <button class="m-btn m-ok" id="renameOk">저장</button>
+    </div>
+  </div>
+</div>
+<div id="dateModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-t">언제 품앗이했나요?</div>
+    <div class="modal-s" id="dateHint"></div>
+    <div class="cal-nav dp-nav"><button id="dpPrev" aria-label="이전 달">‹</button><span class="cal-title" id="dpTitle"></span><button id="dpNext" aria-label="다음 달">›</button></div>
+    <div class="cal-wd"><span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+    <div class="dp-grid" id="dpGrid"></div>
+    <div class="dp-legend"><span><i class="lg-today"></i>오늘</span><span id="dpLegMate"><i class="lg-mate"></i>상대가 찍은 날</span></div>
+    <div class="modal-row">
+      <button class="m-btn m-cancel" id="dateCancel">닫기</button>
+      <button class="m-btn m-ok" id="dateOk">확인</button>
     </div>
   </div>
 </div>
@@ -1041,6 +1083,58 @@ function renderWaiting(s) {
   setFoot('');
 }
 
+// 도장 날짜 고르기 — null = 오늘. 고를 수 있는 범위(s.buyRange {min,max})는 서버가 줌: 상대가 찍은 날 ~ 오늘(KST)
+let buyDate = null;
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
+const isoMs = iso => Date.parse(iso + 'T00:00:00Z');
+function dayLabel(iso) { return `${fmtDate(iso)} (${WD[new Date(isoMs(iso)).getUTCDay()]})`; }
+function dayRel(iso, today) { const n = Math.round((isoMs(today) - isoMs(iso)) / 86400000); return n === 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`; }
+let datePick = null; // 날짜 창 상태 {range, hasLast, sel:창에서 고른 날(확인 전), ym:'YYYY-MM'(보고 있는 달)}
+function openDateModal(range, hasLast) {
+  const sel = buyDate || range.max;
+  datePick = { range, hasLast, sel, ym: sel.slice(0, 7) }; // 고른 날(없으면 오늘)이 있는 달부터
+  $('#dateHint').textContent = `${hasLast ? '상대가 찍은 날' : '방 만든 날'}(${fmtDate(range.min)})부터 오늘까지 고를 수 있어요`;
+  $('#dpLegMate').style.display = hasLast ? '' : 'none';
+  renderDatePick();
+  $('#dateModal').classList.add('show');
+}
+function renderDatePick() {
+  const { range, hasLast, sel: cur, ym } = datePick;
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  let cells = '';
+  for (let i = 0; i < first; i++) cells += '<span></span>';
+  for (let d = 1; d <= days; d++) {
+    const iso = `${ym}-${String(d).padStart(2, '0')}`;
+    const cls = ['dp-day', (first + d - 1) % 7 === 0 && 'sun', iso === cur && 'sel', iso === range.max && 'today', hasLast && iso === range.min && 'mate'].filter(Boolean).join(' ');
+    cells += iso >= range.min && iso <= range.max
+      ? `<button class="${cls}" data-d="${iso}">${d}</button>`
+      : `<span class="${cls} off">${d}</span>`;
+  }
+  $('#dpTitle').textContent = `${y}년 ${m}월`;
+  $('#dpPrev').disabled = ym <= range.min.slice(0, 7); // 범위 밖 달로는 못 넘어감
+  $('#dpNext').disabled = ym >= range.max.slice(0, 7);
+  $('#dpGrid').innerHTML = cells;
+}
+function shiftDatePick(n) {
+  const [y, m] = datePick.ym.split('-').map(Number);
+  datePick.ym = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
+  renderDatePick();
+}
+$('#dpPrev').onclick = () => shiftDatePick(-1);
+$('#dpNext').onclick = () => shiftDatePick(1);
+$('#dpGrid').onclick = e => { // 날짜 누르면 창 안에서 선택만 바뀜(적용은 확인)
+  const b = e.target.closest('[data-d]'); if (!b) return;
+  datePick.sel = b.dataset.d;
+  renderDatePick();
+};
+$('#dateOk').onclick = () => {
+  buyDate = datePick.sel !== datePick.range.max ? datePick.sel : null;
+  $('#dateModal').classList.remove('show');
+  if (lastState && !miniMode) renderMain(lastState, lastOffline);
+};
+$('#dateCancel').onclick = () => $('#dateModal').classList.remove('show'); // 닫기 = 바꾼 것 버림
+
 // 3) 품앗이 메인 (내 관점)
 function renderMain(s, offline) {
   hideBusy();
@@ -1065,6 +1159,11 @@ function renderMain(s, offline) {
   const versus = `<div class="versus3">${meCol}<div class="vs" title="번갈아 사는 품앗이">⇄</div>${mateCol}</div>`;
 
   const pendingOtherUndo = !offline && s.undoReq && !s.undoReq.byMe; // 상대가 취소 요청 → 먼저 응답해야 함
+  const range = (!offline && myTurn && s.buyRange) || null;
+  if (buyDate && (!range || buyDate < range.min || buyDate >= range.max)) buyDate = null; // 범위 밖(날이 바뀜 등)이면 오늘로
+  const datePick = (range && range.min < range.max) // 오늘 하루뿐이면 고를 게 없으니 숨김
+    ? `<div class="buy-date-row"><button class="buy-date${buyDate ? ' sel' : ''}" id="buyDatePick">📅 <b>${dayLabel(buyDate || range.max)}</b> ${dayRel(buyDate || range.max, range.max)} · <span class="bd-chg">날짜 변경</span></button></div>`
+    : '';
   let center;
   if (myTurn) {
     center = `<div class="bubble">
@@ -1076,7 +1175,7 @@ function renderMain(s, offline) {
         ? `<div class="waitbox">⚠ 서버가 꺼져 있어 지금은 도장을 찍을 수 없어요.<br>서버가 켜지면 찍을 수 있어요.</div>`
         : pendingOtherUndo
           ? `<div class="waitbox">🔁 상대의 취소 요청을 먼저 처리해주세요.<br>아래에서 <b>승인</b> 또는 <b>거절</b>하면 품앗이를 이어갈 수 있어요.</div>`
-          : `<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
+          : `${datePick}<button class="battle-btn" id="buy">☕ 품앗이 수행</button>`}`;
   } else {
     center = `<div class="bubble">
         ${cup}
@@ -1134,9 +1233,15 @@ function renderMain(s, offline) {
   if ($('#calPrev')) $('#calPrev').onclick = () => shiftMonth(-1);
   if ($('#calNext')) $('#calNext').onclick = () => shiftMonth(1);
 
+  if ($('#buyDatePick')) $('#buyDatePick').onclick = () => openDateModal(range, !!s.last);
   if ($('#buy')) $('#buy').onclick = async () => {
     busy = true;
-    try { await jsonPost('/api/buy', {}, { noBusy: true }); histCache = null; calYM = null; playStamp(null, () => { busy = false; load(); }); }
+    const picked = buyDate;
+    try {
+      await jsonPost('/api/buy', picked ? { date: picked } : {}, { noBusy: true });
+      buyDate = null; histCache = null; calYM = null;
+      playStamp(null, () => { busy = false; load(); if (picked) toast(`${dayLabel(picked)} 날짜로\n기록했어요`); });
+    }
     catch (e) { busy = false; toast(e.message); load(); }
   };
   if ($('#undo')) $('#undo').onclick = async () => {

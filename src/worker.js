@@ -59,14 +59,21 @@ async function handleApi(request, env, execCtx, p) {
     const ctx = await meAndRoom(DB, token);
     if (!ctx) return json({ error: '로그인이 필요해요.' }, 401);
     const { room, key } = ctx;
-    const nextKey = currentTurnKey(room, await lastEvent(DB, room.id));
+    const last = await lastEvent(DB, room.id);
+    const nextKey = currentTurnKey(room, last);
     if (key !== nextKey) throw new Error(`지금은 ${keyName(room, nextKey)}님 차례예요.`);
     // 상대의 취소 요청이 대기 중이면 먼저 승인/거절해야 함(수행이 요청을 조용히 무시하는 것 방지)
     if (await getUndoRequest(DB, room.id)) throw new Error('상대의 취소 요청을 먼저 처리해주세요.');
-    const { note } = await request.json();
-    await recordBuy(DB, room.id, key, note);
+    const { note, date } = await request.json();
+    // 날짜는 고를 수 있음: 상대가 찍은 날 ~ 오늘(KST). 안 보내면 오늘.
+    const range = await buyRange(DB, room.id, last);
+    const day = date || range.max;
+    if (!isIsoDay(day)) throw new Error('날짜 형식이 올바르지 않아요.');
+    if (day > range.max) throw new Error('오늘 이후 날짜로는 기록할 수 없어요.');
+    if (day < range.min) throw new Error(`${fmtMD(range.min)} 이전 날짜로는 기록할 수 없어요.`);
+    await recordBuy(DB, room.id, key, note, day);
     await clearUndoRequest(DB, room.id); // 새 도장 → 이전 취소 요청은 무효
-    execCtx.waitUntil(notifyTurn(env, DB, room, key)); // 상대에게 "내 차례" 푸시(응답 지연 없이 백그라운드)
+    execCtx.waitUntil(notifyTurn(env, DB, room, key, day)); // 상대에게 "내 차례" 푸시(응답 지연 없이 백그라운드)
     return json({ ok: true });
   }
   if (p === '/api/undo' && m === 'POST') {
@@ -171,10 +178,19 @@ async function handleApi(request, env, execCtx, p) {
 function newKey() { return 'u' + Date.now().toString(36) + Math.floor(Math.random() * 1679616).toString(36); }
 function newRoomId() { return 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1679616).toString(36); }
 function nowIso() { return new Date().toISOString(); }
-function kstToday() {
-  const d = new Date(Date.now() + 9 * 3600 * 1000);
+function kstToday() { return kstDay(Date.now()); }
+// 시각(ms 또는 ISO) → KST 기준 'YYYY-MM-DD'
+function kstDay(t) {
+  const d = new Date(new Date(t).getTime() + 9 * 3600 * 1000);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
+// 'YYYY-MM-DD' 이면서 실제 있는 날짜인지(2/30 같은 건 거부)
+function isIsoDay(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  return !isNaN(d) && d.toISOString().slice(0, 10) === s;
+}
+function fmtMD(iso) { const [, m, d] = iso.split('-'); return `${+m}/${+d}`; }
 function pin4() { const a = new Uint32Array(1); crypto.getRandomValues(a); return String(1000 + (a[0] % 9000)); }
 
 // ---- 방(rooms + members 테이블) ----
@@ -254,6 +270,16 @@ function currentTurnKey(room, last) {
   if (!last) return room.creator.key;
   return last.user_key === room.creator.key ? room.joiner.key : room.creator.key;
 }
+// 도장 날짜로 고를 수 있는 범위: 마지막 기록(=상대가 찍은) 날 ~ 오늘(KST). 첫 도장이면 방 만든 날부터.
+async function buyRange(DB, roomId, last) {
+  const max = kstToday();
+  let min = last && last.date;
+  if (!min) {
+    const r = await DB.prepare('SELECT created_at FROM rooms WHERE id = ?').bind(roomId).first();
+    min = r && r.created_at && !isNaN(new Date(r.created_at)) ? kstDay(r.created_at) : max;
+  }
+  return { min: min > max ? max : min, max };
+}
 
 // ---- 방 만들기 / 참여 ----
 async function createRoom(DB, name) {
@@ -320,9 +346,9 @@ async function setAvatar(DB, token, avatar) {
 }
 
 // ---- 이벤트 ----
-async function recordBuy(DB, roomId, key, note) {
+async function recordBuy(DB, roomId, key, note, day) {
   await DB.prepare('INSERT INTO events(room_id, date, user_key, note, created_at) VALUES(?, ?, ?, ?, ?)')
-    .bind(roomId, kstToday(), key, note || null, nowIso()).run();
+    .bind(roomId, day || kstToday(), key, note || null, nowIso()).run();
 }
 // ---- 웹푸시 구독 저장 ----
 async function saveSub(DB, roomId, key, sub) {
@@ -340,14 +366,15 @@ async function logNotif(DB, row) {
   } catch (e) { /* 무시 */ }
 }
 // 상대(=이제 차례가 된 사람)의 모든 기기 구독으로 "내 차례" 푸시 발송. 실패/만료 구독은 정리.
-async function notifyTurn(env, DB, room, buyerKey) {
+async function notifyTurn(env, DB, room, buyerKey, day) {
   try {
     if (!env.VAPID_JWK) return; // 키 미설정이면 스킵
     const targetKey = room.creator.key === buyerKey ? (room.joiner && room.joiner.key) : room.creator.key;
     if (!targetKey) return;
     const buyerName = keyName(room, buyerKey);
     const subs = (await DB.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE user_key = ? AND pref_turn = 1').bind(targetKey).all()).results || [];
-    const payload = { title: '☕ 내 차례가 돌아왔어요!', body: `${buyerName}님이 품앗이 했어요 · 이제 당신이 품앗이를 수행할 차례예요`, tag: 'wc-turn', url: '/' };
+    const when = day && day !== kstToday() ? ` (${fmtMD(day)})` : ''; // 지난 날짜로 찍었으면 날짜 표시
+    const payload = { title: '☕ 내 차례가 돌아왔어요!', body: `${buyerName}님이 품앗이 했어요${when} · 이제 당신이 품앗이를 수행할 차례예요`, tag: 'wc-turn', url: '/' };
     for (const s of subs) {
       try {
         const status = await sendPush(env, s, payload);
@@ -445,6 +472,7 @@ async function getState(DB, token) {
     me: pub(me), mate: pub(mate),
     creator: pub(room.creator), joiner: pub(room.joiner),
     myTurn: meKey === nextKey,
+    buyRange: meKey === nextKey ? await buyRange(DB, room.id, last) : null, // 내 차례일 때 고를 수 있는 날짜 {min, max}
     turn: pub(memberByKey(room, nextKey)),
     last: last ? { name: keyName(room, last.user_key), date: last.date, mine: last.user_key === meKey } : null,
     undoReq: ur ? { byMe: ur.by_key === meKey, byName: keyName(room, ur.by_key) } : null,
